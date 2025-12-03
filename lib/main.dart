@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'core/config/firebase_config.dart';
-import 'features/memo/presentation/screens/memo_list_screen.dart';
+// import 'core/config/firebase_config.dart';
+import 'features/auth/presentation/screens/onboarding_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Firebase 초기화
-  await FirebaseConfig.initialize();
+  // Firebase 초기화 (임시 비활성화 - Firebase 설정 후 활성화)
+  // await FirebaseConfig.initialize();
 
   runApp(
     const ProviderScope(
@@ -29,7 +29,7 @@ class PamyoApp extends StatelessWidget {
         ),
         useMaterial3: true,
       ),
-      home: const MemoListScreen(),
+      home: const OnboardingScreen(),
       debugShowCheckedModeBanner: false,
     );
   }
