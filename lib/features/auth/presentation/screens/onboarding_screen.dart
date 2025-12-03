@@ -1,9 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:uuid/uuid.dart';
-import '../../../memo/domain/entities/folder.dart';
-import '../../../memo/presentation/providers/folder_providers.dart';
-import '../../../memo/presentation/providers/memo_providers.dart';
 import '../../../memo/presentation/screens/memo_list_screen.dart';
 
 class OnboardingScreen extends ConsumerStatefulWidget {
@@ -152,6 +148,27 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   }
 
   Future<void> _completeOnboarding(BuildContext context) async {
+    // TODO: Firebase 초기화 후 활성화
+    // Firebase가 초기화되지 않았으므로 임시로 바로 메모 화면으로 이동
+
+    if (context.mounted) {
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          builder: (context) => const MemoListScreen(),
+        ),
+      );
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${_selectedIndices.length}개의 폴더가 선택되었습니다!\n(Firebase 초기화 후 저장됩니다)'),
+          backgroundColor: Colors.orange,
+          duration: const Duration(seconds: 3),
+        ),
+      );
+    }
+
+    // Firebase 초기화 후 활성화할 코드:
+    /*
     final userId = ref.read(currentUserIdProvider);
     if (userId == null) {
       if (context.mounted) {
@@ -208,5 +225,6 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         );
       }
     }
+    */
   }
 }
