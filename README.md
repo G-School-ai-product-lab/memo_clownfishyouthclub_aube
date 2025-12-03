@@ -75,8 +75,8 @@
 
 1. **저장소 클론**
 ```bash
-git clone https://github.com/yourusername/pamyo_one.git
-cd pamyo_one
+git clone https://github.com/yourusername/memo_clownfishyouthclub_aube.git
+cd memo_clownfishyouthclub_aube
 ```
 
 2. **의존성 설치**
@@ -157,7 +157,7 @@ lib/
 
 ## 문의
 
-프로젝트 관련 문의사항이나 버그 리포트는 [Issues](https://github.com/yourusername/pamyo_one/issues)에 등록해주세요.
+프로젝트 관련 문의사항이나 버그 리포트는 [Issues](https://github.com/yourusername/memo_clownfishyouthclub_aube/issues)에 등록해주세요.
 
 ## 참고 문서
 

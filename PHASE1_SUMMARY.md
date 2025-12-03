@@ -93,7 +93,7 @@ lib/
 ## 프로젝트 파일 트리
 
 ```
-pamyo_one/
+memo_clownfishyouthclub_aube/
 ├── lib/
 │   ├── core/
 │   │   ├── config/

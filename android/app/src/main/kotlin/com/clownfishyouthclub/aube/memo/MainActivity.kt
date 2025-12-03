@@ -1,4 +1,4 @@
-package com.example.pamyo_one
+package com.clownfishyouthclub.aube.memo
 
 import io.flutter.embedding.android.FlutterActivity
 
