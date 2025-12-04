@@ -294,18 +294,52 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
           TextButton(
             onPressed: () async {
-              // TODO: Firebase에 메모 저장
-              // 임시로 가이드 진행 상태만 업데이트
-              await ref.read(guideNotifierProvider.notifier).markFirstMemoCreated();
+              if (titleController.text.trim().isEmpty &&
+                  contentController.text.trim().isEmpty) {
+                return;
+              }
 
-              if (context.mounted) {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('메모가 작성되었습니다! (임시 - Firebase 초기화 필요)'),
-                    backgroundColor: Colors.orange,
-                  ),
+              try {
+                final repository = ref.read(memoRepositoryProvider);
+                final userId = ref.read(currentUserIdProvider);
+
+                if (userId == null) {
+                  throw Exception('사용자 ID가 없습니다');
+                }
+
+                final memo = Memo(
+                  id: '',
+                  userId: userId,
+                  title: titleController.text.trim(),
+                  content: contentController.text.trim(),
+                  tags: [],
+                  createdAt: DateTime.now(),
+                  updatedAt: DateTime.now(),
                 );
+
+                await repository.createMemo(memo);
+
+                // 가이드 진행 상태 업데이트
+                await ref.read(guideNotifierProvider.notifier).markFirstMemoCreated();
+
+                if (context.mounted) {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('메모가 작성되었습니다!'),
+                      backgroundColor: Color(0xFF8B4444),
+                    ),
+                  );
+                }
+              } catch (e) {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('저장 실패: $e'),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
               }
             },
             child: const Text('저장', style: TextStyle(color: Color(0xFF8B4444))),

@@ -1,12 +1,12 @@
 import '../../domain/entities/memo.dart';
 import '../../domain/repositories/memo_repository.dart';
-import '../datasources/firebase_memo_datasource.dart';
+import '../datasources/local_memo_datasource.dart';
 import '../models/memo_model.dart';
 
 class MemoRepositoryImpl implements MemoRepository {
-  final FirebaseMemoDataSource _dataSource;
+  final LocalMemoDataSource _dataSource;
 
-  MemoRepositoryImpl({required FirebaseMemoDataSource dataSource})
+  MemoRepositoryImpl({required LocalMemoDataSource dataSource})
       : _dataSource = dataSource;
 
   @override

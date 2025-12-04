@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../../../memo/domain/entities/memo.dart';
+import '../../../memo/presentation/screens/memo_edit_screen.dart';
 
 class RecentMemosSection extends StatelessWidget {
   final List<Memo> memos;
@@ -43,7 +44,12 @@ class RecentMemosSection extends StatelessWidget {
       ),
       child: InkWell(
         onTap: () {
-          // TODO: 메모 상세 화면으로 이동
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => MemoEditScreen(memo: memo),
+            ),
+          );
         },
         borderRadius: BorderRadius.circular(12),
         child: Padding(

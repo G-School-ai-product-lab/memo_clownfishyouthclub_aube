@@ -1,12 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import '../../data/datasources/firebase_memo_datasource.dart';
+import '../../data/datasources/local_memo_datasource.dart';
 import '../../data/repositories/memo_repository_impl.dart';
 import '../../domain/entities/memo.dart';
 import '../../domain/repositories/memo_repository.dart';
 
-final memoDataSourceProvider = Provider<FirebaseMemoDataSource>((ref) {
-  return FirebaseMemoDataSource();
+// 로컬 메모리 기반 DataSource (Firebase 대신 임시 사용)
+final memoDataSourceProvider = Provider<LocalMemoDataSource>((ref) {
+  return LocalMemoDataSource();
 });
 
 final memoRepositoryProvider = Provider<MemoRepository>((ref) {
@@ -14,8 +14,9 @@ final memoRepositoryProvider = Provider<MemoRepository>((ref) {
   return MemoRepositoryImpl(dataSource: dataSource);
 });
 
+// 임시 사용자 ID (Firebase 인증 대신)
 final currentUserIdProvider = Provider<String?>((ref) {
-  return FirebaseAuth.instance.currentUser?.uid;
+  return 'demo_user_001';
 });
 
 final memosStreamProvider = StreamProvider<List<Memo>>((ref) {
