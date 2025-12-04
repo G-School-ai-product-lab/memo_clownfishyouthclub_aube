@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "395596167392",
+    "project_id": "pamyo-aube",
+    "storage_bucket": "pamyo-aube.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:395596167392:android:013b6c35d06aee1df43885",
+        "android_client_info": {
+          "package_name": "com.clownfishyouthclub.aube.memo"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDrkhDXaBs8KDlUNDzcfhu1-PtbkPsw0ZI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
