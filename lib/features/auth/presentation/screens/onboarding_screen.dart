@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../../memo/presentation/screens/memo_list_screen.dart';
+import '../../../home/presentation/screens/home_screen.dart';
 
 class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key});
@@ -154,7 +154,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     if (context.mounted) {
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(
-          builder: (context) => const MemoListScreen(),
+          builder: (context) => const HomeScreen(),
         ),
       );
 
