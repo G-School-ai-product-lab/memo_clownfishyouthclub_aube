@@ -1,1 +1,42 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"pamyo-aube","appId":"1:395596167392:android:013b6c35d06aee1df43885","fileOutput":"android/app/google-services.json"}},"ios":{"default":{"projectId":"pamyo-aube","appId":"1:395596167392:ios:ee1b04218588290ff43885","uploadDebugSymbols":false,"fileOutput":"ios/Runner/GoogleService-Info.plist"}},"macos":{"default":{"projectId":"pamyo-aube","appId":"1:395596167392:ios:66bfa568009214aff43885","uploadDebugSymbols":false,"fileOutput":"macos/Runner/GoogleService-Info.plist"}},"dart":{"lib/firebase_options.dart":{"projectId":"pamyo-aube","configurations":{"android":"1:395596167392:android:013b6c35d06aee1df43885","ios":"1:395596167392:ios:ee1b04218588290ff43885","macos":"1:395596167392:ios:66bfa568009214aff43885"}}}}}}
+{
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "pamyo-aube",
+          "appId": "1:395596167392:android:013b6c35d06aee1df43885",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "ios": {
+        "default": {
+          "projectId": "pamyo-aube",
+          "appId": "1:395596167392:ios:ee1b04218588290ff43885",
+          "uploadDebugSymbols": false,
+          "fileOutput": "ios/Runner/GoogleService-Info.plist"
+        }
+      },
+      "macos": {
+        "default": {
+          "projectId": "pamyo-aube",
+          "appId": "1:395596167392:ios:66bfa568009214aff43885",
+          "uploadDebugSymbols": false,
+          "fileOutput": "macos/Runner/GoogleService-Info.plist"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "pamyo-aube",
+          "configurations": {
+            "android": "1:395596167392:android:013b6c35d06aee1df43885",
+            "ios": "1:395596167392:ios:ee1b04218588290ff43885",
+            "macos": "1:395596167392:ios:66bfa568009214aff43885"
+          }
+        }
+      }
+    }
+  }
+}

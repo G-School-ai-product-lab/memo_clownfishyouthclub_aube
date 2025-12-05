@@ -1,0 +1,35 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // 메모 컬렉션 규칙
+    match /memos/{memoId} {
+      // 현재는 인증 없이 누구나 읽기/쓰기 가능 (개발 단계)
+      // Phase 2에서 Firebase Auth 구현 후 사용자 인증 추가 예정
+      allow read, write: if true;
+
+      // TODO: Phase 2 - Firebase Auth 구현 후 아래 규칙으로 변경
+      // allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
+      // allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+    }
+
+    // 폴더 컬렉션 규칙
+    match /folders/{folderId} {
+      // 현재는 인증 없이 누구나 읽기/쓰기 가능 (개발 단계)
+      allow read, write: if true;
+
+      // TODO: Phase 2 - Firebase Auth 구현 후 아래 규칙으로 변경
+      // allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
+      // allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+    }
+
+    // 태그 컬렉션 규칙 (향후 사용 예정)
+    match /tags/{tagId} {
+      allow read, write: if true;
+
+      // TODO: Phase 2 - Firebase Auth 구현 후 아래 규칙으로 변경
+      // allow read, write: if request.auth != null && request.auth.uid == resource.data.userId;
+    }
+  }
+}

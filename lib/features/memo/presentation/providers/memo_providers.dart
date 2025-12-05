@@ -1,12 +1,12 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../data/datasources/local_memo_datasource.dart';
+import '../../data/datasources/firebase_memo_datasource.dart';
 import '../../data/repositories/memo_repository_impl.dart';
 import '../../domain/entities/memo.dart';
 import '../../domain/repositories/memo_repository.dart';
 
-// 로컬 메모리 기반 DataSource (Firebase 대신 임시 사용)
-final memoDataSourceProvider = Provider<LocalMemoDataSource>((ref) {
-  return LocalMemoDataSource();
+// Firebase 기반 DataSource
+final memoDataSourceProvider = Provider<FirebaseMemoDataSource>((ref) {
+  return FirebaseMemoDataSource();
 });
 
 final memoRepositoryProvider = Provider<MemoRepository>((ref) {

@@ -1,6 +1,8 @@
+import 'dart:async';
 import '../models/memo_model.dart';
+import 'memo_datasource.dart';
 
-class LocalMemoDataSource {
+class LocalMemoDataSource implements MemoDataSource {
   final List<MemoModel> _memos = [];
   int _idCounter = 0;
 

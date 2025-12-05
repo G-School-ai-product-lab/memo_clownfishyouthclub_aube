@@ -1,8 +1,9 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../../../core/constants/app_constants.dart';
 import '../models/memo_model.dart';
+import 'memo_datasource.dart';
 
-class FirebaseMemoDataSource {
+class FirebaseMemoDataSource implements MemoDataSource {
   final FirebaseFirestore _firestore;
 
   FirebaseMemoDataSource({FirebaseFirestore? firestore})

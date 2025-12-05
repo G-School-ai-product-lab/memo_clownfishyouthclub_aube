@@ -1,12 +1,12 @@
 import '../../domain/entities/memo.dart';
 import '../../domain/repositories/memo_repository.dart';
-import '../datasources/local_memo_datasource.dart';
+import '../datasources/memo_datasource.dart';
 import '../models/memo_model.dart';
 
 class MemoRepositoryImpl implements MemoRepository {
-  final LocalMemoDataSource _dataSource;
+  final MemoDataSource _dataSource;
 
-  MemoRepositoryImpl({required LocalMemoDataSource dataSource})
+  MemoRepositoryImpl({required MemoDataSource dataSource})
       : _dataSource = dataSource;
 
   @override
