@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:uuid/uuid.dart';
 import '../../domain/entities/memo.dart';
 import '../providers/memo_providers.dart';
+import '../../../ai/presentation/providers/ai_providers.dart';
+import '../providers/folder_providers.dart';
 
 class MemoListScreen extends ConsumerWidget {
   const MemoListScreen({super.key});
@@ -85,6 +87,32 @@ class MemoListScreen extends ConsumerWidget {
                 return;
               }
 
+              // AI 자동 분류 서비스 가져오기
+              final aiService = ref.read(aiClassificationServiceProvider);
+              final foldersAsync = ref.read(foldersStreamProvider);
+
+              String? folderId;
+              List<String> tags = [];
+
+              // AI 서비스가 사용 가능하고 폴더 데이터가 있으면 자동 분류
+              if (aiService.isAvailable && foldersAsync.hasValue) {
+                final folders = foldersAsync.value ?? [];
+                if (folders.isNotEmpty &&
+                    titleController.text.isNotEmpty &&
+                    contentController.text.isNotEmpty) {
+                  final result = await aiService.classifyMemo(
+                    title: titleController.text,
+                    content: contentController.text,
+                    folders: folders,
+                  );
+
+                  if (result.isSuccess) {
+                    folderId = result.folderId;
+                    tags = result.tags;
+                  }
+                }
+              }
+
               final now = DateTime.now();
               final memo = Memo(
                 id: const Uuid().v4(),
@@ -93,7 +121,8 @@ class MemoListScreen extends ConsumerWidget {
                     ? '제목 없음'
                     : titleController.text,
                 content: contentController.text,
-                tags: [],
+                tags: tags,
+                folderId: folderId,
                 createdAt: now,
                 updatedAt: now,
               );
@@ -103,6 +132,19 @@ class MemoListScreen extends ConsumerWidget {
 
               if (context.mounted) {
                 Navigator.pop(context);
+                // AI 분류 결과 표시
+                if (tags.isNotEmpty || folderId != null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        'AI가 자동으로 분류했습니다!\n'
+                        '${folderId != null ? '폴더 지정됨 | ' : ''}'
+                        '${tags.isNotEmpty ? '태그: ${tags.join(", ")}' : ''}',
+                      ),
+                      duration: const Duration(seconds: 3),
+                    ),
+                  );
+                }
               }
             },
             child: const Text('저장'),
