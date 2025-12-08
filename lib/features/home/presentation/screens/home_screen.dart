@@ -7,6 +7,7 @@ import '../../../memo/domain/entities/memo.dart';
 import '../../../memo/presentation/providers/filter_providers.dart';
 import '../../../memo/presentation/providers/memo_providers.dart';
 import '../../../profile/presentation/screens/profile_screen.dart';
+import '../../../search/presentation/screens/ai_search_screen.dart';
 import '../widgets/folder_shortcuts_section.dart';
 import '../widgets/recent_memos_section.dart';
 
@@ -245,7 +246,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                 FloatingActionButton(
                   heroTag: 'ai_search',
                   onPressed: () {
-                    // TODO: AI 자연어 검색 화면으로 이동
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const AiSearchScreen(),
+                      ),
+                    );
                     ref.read(guideNotifierProvider.notifier).markNaturalSearchUsed();
                   },
                   backgroundColor: Colors.white,
@@ -296,7 +302,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       child: TextField(
         readOnly: true,
         onTap: () {
-          // TODO: 검색 화면으로 이동
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const AiSearchScreen(),
+            ),
+          );
         },
         decoration: InputDecoration(
           hintText: '메모 검색하기...',
@@ -305,7 +316,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           suffixIcon: IconButton(
             icon: const Icon(Icons.send, color: Color(0xFF8B4444)),
             onPressed: () {
-              // TODO: AI 검색으로 이동
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const AiSearchScreen(),
+                ),
+              );
               ref.read(guideNotifierProvider.notifier).markNaturalSearchUsed();
             },
           ),

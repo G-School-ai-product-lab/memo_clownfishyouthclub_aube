@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../data/datasources/firebase_memo_datasource.dart';
 import '../../data/repositories/memo_repository_impl.dart';
@@ -14,9 +15,15 @@ final memoRepositoryProvider = Provider<MemoRepository>((ref) {
   return MemoRepositoryImpl(dataSource: dataSource);
 });
 
-// 임시 사용자 ID (Firebase 인증 대신)
+// Firebase Auth 사용자 스트림
+final authStateProvider = StreamProvider<User?>((ref) {
+  return FirebaseAuth.instance.authStateChanges();
+});
+
+// 현재 사용자 ID
 final currentUserIdProvider = Provider<String?>((ref) {
-  return 'demo_user_001';
+  final authState = ref.watch(authStateProvider);
+  return authState.value?.uid;
 });
 
 final memosStreamProvider = StreamProvider<List<Memo>>((ref) {

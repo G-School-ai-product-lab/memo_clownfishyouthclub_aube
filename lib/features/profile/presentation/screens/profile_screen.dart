@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../../drawer/presentation/widgets/main_drawer.dart';
+import '../../../auth/data/services/auth_service.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -10,6 +11,7 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  final _authService = AuthService();
   User? _currentUser;
   bool _isLoading = false;
 
@@ -54,11 +56,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     setState(() => _isLoading = true);
 
     try {
-      await FirebaseAuth.instance.signOut();
+      await _authService.signOut();
 
       if (!mounted) return;
 
-      // 로그인 화면으로 이동
+      // 로그인 화면으로 이동 (authStateProvider가 자동으로 처리)
       Navigator.of(context).pushNamedAndRemoveUntil(
         '/login',
         (route) => false,
