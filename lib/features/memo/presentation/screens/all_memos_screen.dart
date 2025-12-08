@@ -19,6 +19,22 @@ class _AllMemosScreenState extends ConsumerState<AllMemosScreen> {
     final memosAsync = ref.watch(memosStreamProvider);
     final currentFilter = ref.watch(memoFilterProvider);
 
+    // 필터 적용
+    final filteredMemosAsync = memosAsync.whenData((memos) {
+      if (!currentFilter.isActive) {
+        return memos;
+      }
+
+      return memos.where((memo) {
+        if (currentFilter.type == FilterType.folder) {
+          return memo.folderId == currentFilter.folderId;
+        } else if (currentFilter.type == FilterType.tag) {
+          return memo.tags.contains(currentFilter.tagId);
+        }
+        return true;
+      }).toList();
+    });
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -139,7 +155,7 @@ class _AllMemosScreenState extends ConsumerState<AllMemosScreen> {
 
           // 메모 목록
           Expanded(
-            child: memosAsync.when(
+            child: filteredMemosAsync.when(
               data: (memos) {
                 if (memos.isEmpty) {
                   return Center(
