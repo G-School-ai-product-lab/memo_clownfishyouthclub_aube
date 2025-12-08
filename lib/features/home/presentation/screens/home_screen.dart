@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../drawer/presentation/widgets/main_drawer.dart';
 import '../../../guide/presentation/providers/guide_providers.dart';
 import '../../../guide/presentation/widgets/initial_guide_overlay.dart';
 import '../../../memo/domain/entities/memo.dart';
+import '../../../memo/presentation/providers/filter_providers.dart';
 import '../../../memo/presentation/providers/memo_providers.dart';
+import '../../../profile/presentation/screens/profile_screen.dart';
 import '../widgets/folder_shortcuts_section.dart';
 import '../widgets/recent_memos_section.dart';
 
@@ -35,9 +38,11 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final memosAsync = ref.watch(memosStreamProvider);
+    final currentFilter = ref.watch(memoFilterProvider);
 
     return Scaffold(
       backgroundColor: Colors.white,
+      drawer: const MainDrawer(),
       body: Stack(
         children: [
           SafeArea(
@@ -52,11 +57,13 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     floating: true,
                     backgroundColor: Colors.white,
                     elevation: 0,
-                    leading: IconButton(
-                      icon: const Icon(Icons.menu, color: Colors.black87),
-                      onPressed: () {
-                        // TODO: 사이드바 열기
-                      },
+                    leading: Builder(
+                      builder: (context) => IconButton(
+                        icon: const Icon(Icons.menu, color: Colors.black87),
+                        onPressed: () {
+                          Scaffold.of(context).openDrawer();
+                        },
+                      ),
                     ),
                     actions: [
                       IconButton(
@@ -64,6 +71,17 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                             color: Colors.black87),
                         onPressed: () {
                           // TODO: 알림 화면으로 이동
+                        },
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.person_outline,
+                            color: Colors.black87),
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => const ProfileScreen(),
+                            ),
+                          );
                         },
                       ),
                     ],
@@ -83,33 +101,73 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                     child: FolderShortcutsSection(),
                   ),
 
+                  // 필터 상태 표시 (필터가 활성화된 경우)
+                  if (currentFilter.isActive)
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                        child: Row(
+                          children: [
+                            Chip(
+                              avatar: Icon(
+                                currentFilter.type == FilterType.folder
+                                    ? Icons.folder_outlined
+                                    : Icons.tag,
+                                size: 16,
+                                color: const Color(0xFF8B3A3A),
+                              ),
+                              label: Text(
+                                currentFilter.displayName ?? '',
+                                style: const TextStyle(
+                                  fontSize: 14,
+                                  color: Color(0xFF8B3A3A),
+                                ),
+                              ),
+                              backgroundColor: const Color(0xFFFFF5F5),
+                              deleteIcon: const Icon(
+                                Icons.close,
+                                size: 16,
+                                color: Color(0xFF8B3A3A),
+                              ),
+                              onDeleted: () {
+                                ref.read(memoFilterProvider.notifier).clearFilter();
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
                   // 최근 메모 섹션
                   SliverToBoxAdapter(
                     child: Padding(
                       padding: const EdgeInsets.fromLTRB(16, 24, 16, 16),
                       child: Row(
                         children: [
-                          const Text(
-                            '최근 메모',
-                            style: TextStyle(
+                          Text(
+                            currentFilter.isActive
+                                ? '${currentFilter.displayName} 메모'
+                                : '최근 메모',
+                            style: const TextStyle(
                               fontSize: 20,
                               fontWeight: FontWeight.bold,
                               color: Colors.black87,
                             ),
                           ),
                           const Spacer(),
-                          TextButton(
-                            onPressed: () {
-                              // TODO: 전체 메모 보기
-                            },
-                            child: const Text(
-                              '전체보기',
-                              style: TextStyle(
-                                color: Color(0xFF8B4444),
-                                fontSize: 14,
+                          if (!currentFilter.isActive)
+                            TextButton(
+                              onPressed: () {
+                                // TODO: 전체 메모 보기
+                              },
+                              child: const Text(
+                                '전체보기',
+                                style: TextStyle(
+                                  color: Color(0xFF8B4444),
+                                  fontSize: 14,
+                                ),
                               ),
                             ),
-                          ),
                         ],
                       ),
                     ),
