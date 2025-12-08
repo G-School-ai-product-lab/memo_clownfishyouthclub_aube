@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../memo/presentation/providers/filter_providers.dart';
 import '../../../memo/presentation/providers/folder_providers.dart';
+import '../../../memo/presentation/screens/all_memos_screen.dart';
 
 class FolderShortcutsSection extends ConsumerWidget {
   const FolderShortcutsSection({super.key});
@@ -50,7 +52,14 @@ class FolderShortcutsSection extends ConsumerWidget {
                         (sum, folder) => sum + folder.memoCount,
                       ),
                       onTap: () {
-                        // TODO: 전체 메모 보기
+                        // 필터 해제
+                        ref.read(memoFilterProvider.notifier).clearFilter();
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const AllMemosScreen(),
+                          ),
+                        );
                       },
                     );
                   }
@@ -61,7 +70,15 @@ class FolderShortcutsSection extends ConsumerWidget {
                     name: folder.name,
                     count: folder.memoCount,
                     onTap: () {
-                      // TODO: 폴더별 메모 보기
+                      // 폴더 필터 적용
+                      ref.read(memoFilterProvider.notifier).setFolderFilter(folder);
+                      // 전체 메모 화면으로 이동
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const AllMemosScreen(),
+                        ),
+                      );
                     },
                   );
                 },

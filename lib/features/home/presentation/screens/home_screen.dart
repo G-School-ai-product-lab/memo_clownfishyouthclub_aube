@@ -6,6 +6,7 @@ import '../../../guide/presentation/widgets/initial_guide_overlay.dart';
 import '../../../memo/domain/entities/memo.dart';
 import '../../../memo/presentation/providers/filter_providers.dart';
 import '../../../memo/presentation/providers/memo_providers.dart';
+import '../../../memo/presentation/screens/all_memos_screen.dart';
 import '../../../profile/presentation/screens/profile_screen.dart';
 import '../../../search/presentation/screens/ai_search_screen.dart';
 import '../widgets/folder_shortcuts_section.dart';
@@ -159,7 +160,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                           if (!currentFilter.isActive)
                             TextButton(
                               onPressed: () {
-                                // TODO: 전체 메모 보기
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => const AllMemosScreen(),
+                                  ),
+                                );
                               },
                               child: const Text(
                                 '전체보기',
