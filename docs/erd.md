@@ -14,6 +14,7 @@ Firebase Authentication을 통해 관리되는 사용자 정보
 - `displayName` (String?): 사용자 표시 이름
 - `photoURL` (String?): 프로필 사진 URL
 
+
 ---
 
 ### 2. Memo (메모)
