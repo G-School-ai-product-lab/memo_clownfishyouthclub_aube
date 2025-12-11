@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../../../../core/utils/app_logger.dart';
 import '../../../memo/domain/entities/memo.dart';
-import '../../../memo/presentation/screens/memo_edit_screen.dart';
 
 class RecentMemosSection extends StatelessWidget {
   final List<Memo> memos;
@@ -13,8 +13,13 @@ class RecentMemosSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    AppLogger.d('RecentMemosSection - Received memos count: ${memos.length}');
+    if (memos.isNotEmpty) {
+      AppLogger.d('RecentMemosSection - First memo: title=${memos.first.title}');
+    }
     // 최근 10개만 표시
     final recentMemos = memos.take(10).toList();
+    AppLogger.d('RecentMemosSection - Recent memos count: ${recentMemos.length}');
 
     return SliverList(
       delegate: SliverChildBuilderDelegate(
@@ -44,10 +49,60 @@ class RecentMemosSection extends StatelessWidget {
       ),
       child: InkWell(
         onTap: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => MemoEditScreen(memo: memo),
+          // 임시로 다이얼로그 표시
+          showDialog(
+            context: context,
+            builder: (context) => AlertDialog(
+              title: Text(memo.title),
+              content: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      memo.content,
+                      style: const TextStyle(fontSize: 14, height: 1.5),
+                    ),
+                    if (memo.tags.isNotEmpty) ...[
+                      const SizedBox(height: 16),
+                      const Divider(),
+                      const SizedBox(height: 8),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: memo.tags.map((tag) {
+                          return Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFFF5F5),
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              '#$tag',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Color(0xFF8B3A3A),
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text(
+                    '닫기',
+                    style: TextStyle(color: Color(0xFF8B3A3A)),
+                  ),
+                ),
+              ],
             ),
           );
         },

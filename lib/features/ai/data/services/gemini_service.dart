@@ -1,4 +1,5 @@
 import 'package:google_generative_ai/google_generative_ai.dart';
+import '../../../../core/utils/app_logger.dart';
 
 /// Gemini API 서비스 클래스
 /// 메모 분류, 태그 생성 등 AI 기능 제공
@@ -58,8 +59,8 @@ $folderList
       }
 
       return null;
-    } catch (e) {
-      print('Error classifying memo: $e');
+    } catch (e, stackTrace) {
+      AppLogger.e('Error classifying memo', error: e, stackTrace: stackTrace);
       return null;
     }
   }
@@ -109,8 +110,8 @@ $folderList
           .toList();
 
       return tags;
-    } catch (e) {
-      print('Error generating tags: $e');
+    } catch (e, stackTrace) {
+      AppLogger.e('Error generating tags', error: e, stackTrace: stackTrace);
       return [];
     }
   }
@@ -135,8 +136,8 @@ $folderList
 
       final response = await _model.generateContent([Content.text(prompt)]);
       return response.text?.trim();
-    } catch (e) {
-      print('Error generating title: $e');
+    } catch (e, stackTrace) {
+      AppLogger.e('Error generating title', error: e, stackTrace: stackTrace);
       return null;
     }
   }
@@ -210,8 +211,8 @@ $folderList
       }
 
       return {'folderId': folderId, 'tags': tags};
-    } catch (e) {
-      print('Error in classifyAndGenerateTags: $e');
+    } catch (e, stackTrace) {
+      AppLogger.e('Error in classifyAndGenerateTags', error: e, stackTrace: stackTrace);
       return {'folderId': null, 'tags': <String>[]};
     }
   }

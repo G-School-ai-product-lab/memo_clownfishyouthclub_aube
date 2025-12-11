@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../domain/entities/guide_progress.dart';
 import '../providers/guide_providers.dart';
 
 class InitialGuideOverlay extends ConsumerWidget {

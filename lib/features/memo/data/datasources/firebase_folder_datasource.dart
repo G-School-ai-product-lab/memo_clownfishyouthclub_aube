@@ -11,10 +11,18 @@ class FirebaseFolderDatasource {
     return _firestore
         .collection('folders')
         .where('userId', isEqualTo: userId)
-        .orderBy('createdAt', descending: true)
+        // orderBy를 제거하고 메모리에서 정렬 (인덱스 필요 없음)
         .snapshots()
-        .map((snapshot) =>
-            snapshot.docs.map((doc) => FolderModel.fromFirestore(doc)).toList());
+        .map((snapshot) {
+          final folders = snapshot.docs
+              .map((doc) => FolderModel.fromFirestore(doc))
+              .toList();
+
+          // 메모리에서 createdAt 기준으로 정렬
+          folders.sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+          return folders;
+        });
   }
 
   Future<FolderModel?> getFolderById(String id) async {

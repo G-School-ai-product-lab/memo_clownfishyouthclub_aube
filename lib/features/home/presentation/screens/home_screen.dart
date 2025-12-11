@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/utils/app_logger.dart';
+import '../../../ai/presentation/providers/ai_providers.dart';
 import '../../../drawer/presentation/widgets/main_drawer.dart';
 import '../../../guide/presentation/providers/guide_providers.dart';
 import '../../../guide/presentation/widgets/initial_guide_overlay.dart';
 import '../../../memo/domain/entities/memo.dart';
 import '../../../memo/presentation/providers/filter_providers.dart';
+import '../../../memo/presentation/providers/folder_providers.dart';
 import '../../../memo/presentation/providers/memo_providers.dart';
 import '../../../memo/presentation/screens/all_memos_screen.dart';
 import '../../../profile/presentation/screens/profile_screen.dart';
@@ -41,6 +44,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget build(BuildContext context) {
     final memosAsync = ref.watch(memosStreamProvider);
     final currentFilter = ref.watch(memoFilterProvider);
+    final userId = ref.watch(currentUserIdProvider);
+
+    AppLogger.d('HomeScreen - Current User ID: $userId');
 
     return Scaffold(
       backgroundColor: Colors.white,
@@ -183,6 +189,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                   // 메모 리스트
                   memosAsync.when(
                     data: (memos) {
+                      AppLogger.d('HomeScreen - Memos count: ${memos.length}');
                       if (memos.isEmpty) {
                         return const SliverFillRemaining(
                           child: Center(
@@ -341,90 +348,183 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   void _showCreateMemoDialog(BuildContext context) {
     final titleController = TextEditingController();
     final contentController = TextEditingController();
+    bool isClassifying = false;
 
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('새 메모'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(
-              controller: titleController,
-              decoration: const InputDecoration(
-                labelText: '제목',
-                hintText: '메모 제목을 입력하세요',
-              ),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          return AlertDialog(
+            title: const Text('새 메모'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: titleController,
+                  decoration: const InputDecoration(
+                    labelText: '제목',
+                    hintText: '메모 제목을 입력하세요',
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: contentController,
+                  decoration: const InputDecoration(
+                    labelText: '내용',
+                    hintText: '메모 내용을 입력하세요',
+                  ),
+                  maxLines: 5,
+                ),
+                if (isClassifying) ...[
+                  const SizedBox(height: 16),
+                  const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF8B4444)),
+                        ),
+                      ),
+                      SizedBox(width: 12),
+                      Text(
+                        'AI가 분류하는 중...',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Color(0xFF8B4444),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
             ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: contentController,
-              decoration: const InputDecoration(
-                labelText: '내용',
-                hintText: '메모 내용을 입력하세요',
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('취소'),
               ),
-              maxLines: 5,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('취소'),
-          ),
-          TextButton(
-            onPressed: () async {
-              if (titleController.text.trim().isEmpty &&
-                  contentController.text.trim().isEmpty) {
-                return;
-              }
+              TextButton(
+                onPressed: isClassifying
+                    ? null
+                    : () async {
+                        if (titleController.text.trim().isEmpty &&
+                            contentController.text.trim().isEmpty) {
+                          return;
+                        }
 
-              try {
-                final repository = ref.read(memoRepositoryProvider);
-                final userId = ref.read(currentUserIdProvider);
+                        setDialogState(() {
+                          isClassifying = true;
+                        });
 
-                if (userId == null) {
-                  throw Exception('사용자 ID가 없습니다');
-                }
+                        try {
+                          final repository = ref.read(memoRepositoryProvider);
+                          final userId = ref.read(currentUserIdProvider);
+                          final aiService = ref.read(aiClassificationServiceProvider);
 
-                final memo = Memo(
-                  id: '',
-                  userId: userId,
-                  title: titleController.text.trim(),
-                  content: contentController.text.trim(),
-                  tags: [],
-                  createdAt: DateTime.now(),
-                  updatedAt: DateTime.now(),
-                );
+                          if (userId == null) {
+                            throw Exception('사용자 ID가 없습니다');
+                          }
 
-                await repository.createMemo(memo);
+                          // AI로 폴더 및 태그 분류
+                          String? folderId;
+                          List<String> tags = [];
+                          String? folderName;
 
-                // 가이드 진행 상태 업데이트
-                await ref.read(guideNotifierProvider.notifier).markFirstMemoCreated();
+                          // 사용 가능한 폴더 목록 가져오기
+                          final foldersAsync = ref.read(foldersStreamProvider);
+                          final folders = foldersAsync.value ?? [];
 
-                if (context.mounted) {
-                  Navigator.pop(context);
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('메모가 작성되었습니다!'),
-                      backgroundColor: Color(0xFF8B4444),
-                    ),
-                  );
-                }
-              } catch (e) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('저장 실패: $e'),
-                      backgroundColor: Colors.red,
-                    ),
-                  );
-                }
-              }
-            },
-            child: const Text('저장', style: TextStyle(color: Color(0xFF8B4444))),
-          ),
-        ],
+                          if (folders.isNotEmpty && aiService.isAvailable) {
+                            final result = await aiService.classifyMemo(
+                              title: titleController.text.trim().isEmpty
+                                  ? '제목 없음'
+                                  : titleController.text.trim(),
+                              content: contentController.text.trim(),
+                              folders: folders,
+                            );
+
+                            if (result.isSuccess) {
+                              folderId = result.folderId;
+                              tags = result.tags;
+
+                              // 폴더 이름 찾기
+                              if (folderId != null) {
+                                try {
+                                  folderName = folders
+                                      .firstWhere((f) => f.id == folderId)
+                                      .name;
+                                } catch (_) {
+                                  folderName = null;
+                                }
+                              }
+                            }
+                          }
+
+                          final memo = Memo(
+                            id: '',
+                            userId: userId,
+                            title: titleController.text.trim(),
+                            content: contentController.text.trim(),
+                            tags: tags,
+                            folderId: folderId,
+                            createdAt: DateTime.now(),
+                            updatedAt: DateTime.now(),
+                          );
+
+                          await repository.createMemo(memo);
+
+                          // 가이드 진행 상태 업데이트
+                          await ref
+                              .read(guideNotifierProvider.notifier)
+                              .markFirstMemoCreated();
+
+                          if (context.mounted) {
+                            Navigator.pop(context);
+
+                            // AI 분류 결과 표시
+                            String message = '메모가 작성되었습니다!';
+                            if (folderId != null || tags.isNotEmpty) {
+                              if (folderName != null) {
+                                message += '\n📁 $folderName';
+                              }
+                              if (tags.isNotEmpty) {
+                                message += '\n🏷️ ${tags.join(', ')}';
+                              }
+                            }
+
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(message),
+                                backgroundColor: const Color(0xFF8B4444),
+                                duration: const Duration(seconds: 3),
+                              ),
+                            );
+                          }
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('저장 실패: $e'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          }
+                        } finally {
+                          if (context.mounted) {
+                            setDialogState(() {
+                              isClassifying = false;
+                            });
+                          }
+                        }
+                      },
+                child: const Text('저장', style: TextStyle(color: Color(0xFF8B4444))),
+              ),
+            ],
+          );
+        },
       ),
     );
   }

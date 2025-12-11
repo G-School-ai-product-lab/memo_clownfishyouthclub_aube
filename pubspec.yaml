@@ -52,6 +52,7 @@ dependencies:
   intl: ^0.19.0
   uuid: ^4.5.1
   shared_preferences: ^2.3.3
+  logger: ^2.5.0
 
   # AI
   google_generative_ai: ^0.4.6
@@ -67,6 +68,11 @@ dev_dependencies:
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^5.0.0
+
+  # Testing
+  mockito: ^5.4.4
+  build_runner: ^2.4.13
+  fake_cloud_firestore: ^3.0.3
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

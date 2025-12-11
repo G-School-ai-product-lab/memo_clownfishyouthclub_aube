@@ -9,11 +9,18 @@ class FirebaseTagDatasource {
   Stream<List<TagModel>> getTags(String userId) {
     return _firestore
         .collection(_getCollectionPath(userId))
-        .orderBy('memoCount', descending: true)
+        // orderBy를 제거하고 메모리에서 정렬 (인덱스 필요 없음)
         .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => TagModel.fromFirestore(doc))
-            .toList());
+        .map((snapshot) {
+          final tags = snapshot.docs
+              .map((doc) => TagModel.fromFirestore(doc))
+              .toList();
+
+          // 메모리에서 memoCount 기준으로 정렬
+          tags.sort((a, b) => b.memoCount.compareTo(a.memoCount));
+
+          return tags;
+        });
   }
 
   Future<TagModel?> getTagById(String userId, String tagId) async {

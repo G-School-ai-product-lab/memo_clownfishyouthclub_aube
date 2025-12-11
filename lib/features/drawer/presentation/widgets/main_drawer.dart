@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../../../../core/utils/app_logger.dart';
 import '../../../memo/presentation/providers/folder_providers.dart';
 import '../../../memo/presentation/providers/tag_providers.dart';
 import '../../../memo/presentation/providers/filter_providers.dart';
@@ -30,14 +31,14 @@ class MainDrawer extends ConsumerWidget {
             DrawerProfileHeader(
               user: user,
               onTap: () {
-                print('프로필 헤더 탭됨'); // 디버그 로그
+                AppLogger.d('Profile header tapped');
                 Navigator.pop(context); // drawer 닫기
 
                 // 프로필 화면으로 이동
                 Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (context) {
-                      print('ProfileScreen 생성 중'); // 디버그 로그
+                      AppLogger.d('Navigating to ProfileScreen');
                       return const ProfileScreen();
                     },
                   ),
