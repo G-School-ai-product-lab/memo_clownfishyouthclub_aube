@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/entities/memo.dart';
 import '../providers/memo_providers.dart';
 import '../providers/filter_providers.dart';
+import 'memo_view_screen.dart';
 
 class AllMemosScreen extends ConsumerStatefulWidget {
   const AllMemosScreen({super.key});
@@ -301,7 +302,12 @@ class _AllMemosScreenState extends ConsumerState<AllMemosScreen> {
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: () {
-          _showMemoDetail(memo);
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => MemoViewScreen(memo: memo),
+            ),
+          );
         },
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -441,127 +447,6 @@ class _AllMemosScreenState extends ConsumerState<AllMemosScreen> {
     );
   }
 
-  void _showMemoDetail(Memo memo) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Row(
-          children: [
-            Expanded(
-              child: Text(
-                memo.title,
-                style: const TextStyle(fontSize: 18),
-              ),
-            ),
-            IconButton(
-              icon: const Icon(Icons.close, size: 20),
-              onPressed: () => Navigator.pop(context),
-              padding: EdgeInsets.zero,
-              constraints: const BoxConstraints(),
-            ),
-          ],
-        ),
-        content: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // 내용
-              Text(
-                memo.content.isEmpty ? '내용이 없습니다.' : memo.content,
-                style: TextStyle(
-                  fontSize: 14,
-                  height: 1.5,
-                  color: memo.content.isEmpty ? Colors.grey : Colors.black87,
-                ),
-              ),
-
-              // 태그
-              if (memo.tags.isNotEmpty) ...[
-                const SizedBox(height: 16),
-                const Divider(),
-                const SizedBox(height: 8),
-                const Text(
-                  '태그',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black54,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: memo.tags.map((tag) {
-                    return Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFFF5F5),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        '#$tag',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Color(0xFF8B3A3A),
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ],
-
-              // 메타 정보
-              const SizedBox(height: 16),
-              const Divider(),
-              const SizedBox(height: 8),
-              _buildMetaInfo('생성', memo.createdAt),
-              const SizedBox(height: 4),
-              _buildMetaInfo('수정', memo.updatedAt),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text(
-              '닫기',
-              style: TextStyle(color: Color(0xFF8B3A3A)),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMetaInfo(String label, DateTime date) {
-    return Row(
-      children: [
-        SizedBox(
-          width: 40,
-          child: Text(
-            '$label:',
-            style: TextStyle(
-              fontSize: 12,
-              color: Colors.grey[600],
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ),
-        Text(
-          _formatFullDate(date),
-          style: TextStyle(
-            fontSize: 12,
-            color: Colors.grey[600],
-          ),
-        ),
-      ],
-    );
-  }
 
   String _formatDate(DateTime date) {
     final now = DateTime.now();
@@ -576,9 +461,5 @@ class _AllMemosScreenState extends ConsumerState<AllMemosScreen> {
     } else {
       return '${date.year}.${date.month.toString().padLeft(2, '0')}.${date.day.toString().padLeft(2, '0')}';
     }
-  }
-
-  String _formatFullDate(DateTime date) {
-    return '${date.year}.${date.month.toString().padLeft(2, '0')}.${date.day.toString().padLeft(2, '0')} ${date.hour.toString().padLeft(2, '0')}:${date.minute.toString().padLeft(2, '0')}';
   }
 }

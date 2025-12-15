@@ -9,18 +9,29 @@ import 'features/profile/presentation/screens/profile_screen.dart';
 import 'features/memo/presentation/providers/memo_providers.dart';
 
 void main() async {
+  print('=== APP STARTING ===');
   WidgetsFlutterBinding.ensureInitialized();
+  print('WidgetsFlutterBinding initialized');
 
-  // Firebase 초기화
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  try {
+    // Firebase 초기화
+    print('Initializing Firebase...');
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    print('✅ Firebase initialized successfully');
+  } catch (e, stackTrace) {
+    print('❌ Firebase initialization error: $e');
+    print('Stack trace: $stackTrace');
+  }
 
+  print('Running app...');
   runApp(
     const ProviderScope(
       child: PamyoApp(),
     ),
   );
+  print('runApp called');
 }
 
 class PamyoApp extends ConsumerWidget {
@@ -28,6 +39,7 @@ class PamyoApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    print('PamyoApp build called');
     final authState = ref.watch(authStateProvider);
 
     return MaterialApp(
@@ -40,6 +52,7 @@ class PamyoApp extends ConsumerWidget {
       ),
       home: authState.when(
         data: (user) {
+          print('Auth state: user = ${user?.uid ?? "null"}');
           // 로그인 상태에 따라 화면 분기
           if (user != null) {
             return const HomeScreen();
@@ -47,14 +60,20 @@ class PamyoApp extends ConsumerWidget {
             return const LoginScreen();
           }
         },
-        loading: () => const Scaffold(
-          body: Center(
-            child: CircularProgressIndicator(
-              color: Color(0xFF8B4444),
+        loading: () {
+          print('Auth state: loading');
+          return const Scaffold(
+            body: Center(
+              child: CircularProgressIndicator(
+                color: Color(0xFF8B4444),
+              ),
             ),
-          ),
-        ),
-        error: (_, __) => const LoginScreen(),
+          );
+        },
+        error: (error, stack) {
+          print('Auth state error: $error');
+          return const LoginScreen();
+        },
       ),
       routes: {
         '/login': (context) => const LoginScreen(),

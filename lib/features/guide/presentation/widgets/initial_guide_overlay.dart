@@ -26,7 +26,7 @@ class InitialGuideOverlay extends ConsumerWidget {
             onTap: () {}, // 내부 탭은 무시
             child: Container(
               margin: const EdgeInsets.symmetric(horizontal: 32),
-              padding: const EdgeInsets.all(24),
+              padding: const  EdgeInsets.all(24),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(16),

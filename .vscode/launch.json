@@ -5,42 +5,60 @@
             "name": "Flutter (Debug)",
             "type": "dart",
             "request": "launch",
-            "program": "lib/main.dart"
+            "program": "lib/main.dart",
+            "args": [
+                "--dart-define=GEMINI_API_KEY=AIzaSyBqVbKNTNSdEy4eO9ciEZ9HynK6GnAli00"
+            ]
         },
         {
             "name": "Flutter (Release)",
             "type": "dart",
             "request": "launch",
             "program": "lib/main.dart",
-            "flutterMode": "release"
+            "flutterMode": "release",
+            "args": [
+                "--dart-define=GEMINI_API_KEY=AIzaSyBqVbKNTNSdEy4eO9ciEZ9HynK6GnAli00"
+            ]
         },
         {
             "name": "Flutter (Profile)",
             "type": "dart",
             "request": "launch",
             "program": "lib/main.dart",
-            "flutterMode": "profile"
+            "flutterMode": "profile",
+            "args": [
+                "--dart-define=GEMINI_API_KEY=AIzaSyBqVbKNTNSdEy4eO9ciEZ9HynK6GnAli00"
+            ]
         },
         {
             "name": "iOS Device (민수의작은네모)",
             "type": "dart",
             "request": "launch",
             "program": "lib/main.dart",
-            "deviceId": "00008140-000E7D1E26C0801C"
+            "deviceId": "00008140-000E7D1E26C0801C",
+            "args": [
+                "--dart-define=GEMINI_API_KEY=AIzaSyBqVbKNTNSdEy4eO9ciEZ9HynK6GnAli00"
+            ]
         },
         {
             "name": "iOS Simulator",
             "type": "dart",
             "request": "launch",
             "program": "lib/main.dart",
-            "deviceId": "ios"
+            "deviceId": "ios",
+            "args": [
+                "--dart-define=GEMINI_API_KEY=AIzaSyBqVbKNTNSdEy4eO9ciEZ9HynK6GnAli00"
+            ]
         },
         {
             "name": "Android Device",
             "type": "dart",
             "request": "launch",
             "program": "lib/main.dart",
-            "deviceId": "android"
+            "deviceId": "android",
+            "args": [
+                "--dart-define=GEMINI_API_KEY=AIzaSyBqVbKNTNSdEy4eO9ciEZ9HynK6GnAli00"
+            ]
         }
     ]
 }

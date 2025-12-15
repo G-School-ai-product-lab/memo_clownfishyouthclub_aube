@@ -4,6 +4,7 @@ import 'package:google_generative_ai/google_generative_ai.dart';
 import '../../../ai/presentation/providers/ai_providers.dart';
 import '../../../memo/domain/entities/memo.dart';
 import '../../../memo/presentation/providers/memo_providers.dart';
+import '../../../memo/presentation/screens/memo_view_screen.dart';
 
 class AiSearchScreen extends ConsumerStatefulWidget {
   const AiSearchScreen({super.key});
@@ -370,7 +371,12 @@ class _AiSearchScreenState extends ConsumerState<AiSearchScreen> {
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: () {
-          _showMemoDetail(memo);
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => MemoViewScreen(memo: memo),
+            ),
+          );
         },
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -437,73 +443,6 @@ class _AiSearchScreenState extends ConsumerState<AiSearchScreen> {
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  void _showMemoDetail(Memo memo) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(memo.title),
-        content: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                memo.content,
-                style: const TextStyle(fontSize: 14, height: 1.5),
-              ),
-              if (memo.tags.isNotEmpty) ...[
-                const SizedBox(height: 16),
-                const Divider(),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: memo.tags.map((tag) {
-                    return Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFFF5F5),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: Text(
-                        '#$tag',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Color(0xFF8B3A3A),
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ],
-              const SizedBox(height: 16),
-              Text(
-                '작성: ${_formatDate(memo.createdAt)}',
-                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-              ),
-              Text(
-                '수정: ${_formatDate(memo.updatedAt)}',
-                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text(
-              '닫기',
-              style: TextStyle(color: Color(0xFF8B3A3A)),
-            ),
-          ),
-        ],
       ),
     );
   }

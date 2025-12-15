@@ -1,24 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:uuid/uuid.dart';
 import '../../domain/entities/memo.dart';
 import '../providers/memo_providers.dart';
 import '../../../ai/presentation/providers/ai_providers.dart';
 import '../providers/folder_providers.dart';
 import '../providers/tag_providers.dart';
 
-class MemoEditScreen extends ConsumerStatefulWidget {
-  final Memo memo;
-
-  const MemoEditScreen({
-    super.key,
-    required this.memo,
-  });
+class MemoCreateScreen extends ConsumerStatefulWidget {
+  const MemoCreateScreen({super.key});
 
   @override
-  ConsumerState<MemoEditScreen> createState() => _MemoEditScreenState();
+  ConsumerState<MemoCreateScreen> createState() => _MemoCreateScreenState();
 }
 
-class _MemoEditScreenState extends ConsumerState<MemoEditScreen> {
+class _MemoCreateScreenState extends ConsumerState<MemoCreateScreen> {
   late TextEditingController _titleController;
   late TextEditingController _contentController;
   bool _isSaving = false;
@@ -27,8 +23,8 @@ class _MemoEditScreenState extends ConsumerState<MemoEditScreen> {
   @override
   void initState() {
     super.initState();
-    _titleController = TextEditingController(text: widget.memo.title);
-    _contentController = TextEditingController(text: widget.memo.content);
+    _titleController = TextEditingController();
+    _contentController = TextEditingController();
   }
 
   @override
@@ -38,8 +34,8 @@ class _MemoEditScreenState extends ConsumerState<MemoEditScreen> {
     super.dispose();
   }
 
-  /// AI를 사용하여 메모 재분류
-  Future<void> _reclassifyWithAI() async {
+  /// AI를 사용하여 메모 자동 분류
+  Future<void> _classifyWithAI() async {
     if (_titleController.text.trim().isEmpty &&
         _contentController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -56,6 +52,19 @@ class _MemoEditScreenState extends ConsumerState<MemoEditScreen> {
     });
 
     try {
+      final userId = ref.read(currentUserIdProvider);
+      if (userId == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('로그인이 필요합니다'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+        return;
+      }
+
       final aiService = ref.read(aiClassificationServiceProvider);
 
       if (!aiService.isAvailable) {
@@ -104,27 +113,17 @@ class _MemoEditScreenState extends ConsumerState<MemoEditScreen> {
             final tagRepository = ref.read(tagRepositoryProvider);
             await ensureTagsExist(
               tagNames: result.tags,
-              userId: widget.memo.userId,
+              userId: userId,
               tagRepository: tagRepository,
             );
           }
 
-          // AI 분류 결과를 메모에 적용하고 저장
-          final repository = ref.read(memoRepositoryProvider);
-          final updatedMemo = Memo(
-            id: widget.memo.id,
-            userId: widget.memo.userId,
-            title: _titleController.text.trim(),
-            content: _contentController.text.trim(),
-            tags: result.tags,
+          // AI 분류 결과로 메모 생성 및 저장
+          await _saveMemoWithClassification(
+            userId: userId,
             folderId: result.folderId,
-            createdAt: widget.memo.createdAt,
-            updatedAt: DateTime.now(),
-            isPinned: widget.memo.isPinned,
+            tags: result.tags,
           );
-
-          await repository.updateMemo(updatedMemo);
-          ref.invalidate(memosStreamProvider);
 
           if (!mounted) return;
 
@@ -161,6 +160,17 @@ class _MemoEditScreenState extends ConsumerState<MemoEditScreen> {
   }
 
   Future<void> _saveMemo() async {
+    final userId = ref.read(currentUserIdProvider);
+    if (userId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('로그인이 필요합니다'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
     if (_titleController.text.trim().isEmpty &&
         _contentController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -177,29 +187,17 @@ class _MemoEditScreenState extends ConsumerState<MemoEditScreen> {
     });
 
     try {
-      final repository = ref.read(memoRepositoryProvider);
-      final updatedMemo = Memo(
-        id: widget.memo.id,
-        userId: widget.memo.userId,
-        title: _titleController.text.trim(),
-        content: _contentController.text.trim(),
-        tags: widget.memo.tags,
-        folderId: widget.memo.folderId,
-        createdAt: widget.memo.createdAt,
-        updatedAt: DateTime.now(),
-        isPinned: widget.memo.isPinned,
+      await _saveMemoWithClassification(
+        userId: userId,
+        folderId: null,
+        tags: [],
       );
 
-      await repository.updateMemo(updatedMemo);
-
       if (mounted) {
-        // Provider 갱신
-        ref.invalidate(memosStreamProvider);
-
         Navigator.pop(context, true);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('메모가 수정되었습니다'),
+            content: Text('메모가 생성되었습니다'),
             backgroundColor: Color(0xFF8B4444),
           ),
         );
@@ -222,6 +220,30 @@ class _MemoEditScreenState extends ConsumerState<MemoEditScreen> {
     }
   }
 
+  Future<void> _saveMemoWithClassification({
+    required String userId,
+    String? folderId,
+    List<String> tags = const [],
+  }) async {
+    final now = DateTime.now();
+    final memo = Memo(
+      id: const Uuid().v4(),
+      userId: userId,
+      title: _titleController.text.trim().isEmpty
+          ? '제목 없음'
+          : _titleController.text.trim(),
+      content: _contentController.text.trim(),
+      tags: tags,
+      folderId: folderId,
+      createdAt: now,
+      updatedAt: now,
+    );
+
+    final repository = ref.read(memoRepositoryProvider);
+    await repository.createMemo(memo);
+    ref.invalidate(memosStreamProvider);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -237,7 +259,7 @@ class _MemoEditScreenState extends ConsumerState<MemoEditScreen> {
           if (!_isClassifying && !_isSaving)
             IconButton(
               icon: const Icon(Icons.auto_awesome, color: Color(0xFF8B4444)),
-              onPressed: _reclassifyWithAI,
+              onPressed: _classifyWithAI,
               tooltip: 'AI 자동분류',
             ),
           if (_isClassifying || _isSaving)
@@ -280,6 +302,7 @@ class _MemoEditScreenState extends ConsumerState<MemoEditScreen> {
                   // 제목 입력
                   TextField(
                     controller: _titleController,
+                    autofocus: true,
                     style: const TextStyle(
                       fontSize: 22,
                       fontWeight: FontWeight.w600,
