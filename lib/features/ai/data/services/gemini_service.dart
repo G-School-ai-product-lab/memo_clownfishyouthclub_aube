@@ -9,7 +9,7 @@ class GeminiService {
 
   GeminiService({required this.apiKey}) {
     _model = GenerativeModel(
-      model: 'gemini-1.5-flash',
+      model: 'gemini-1.5-flash-latest',
       apiKey: apiKey,
       generationConfig: GenerationConfig(
         temperature: 0.7,
@@ -148,20 +148,55 @@ $folderList
   /// [memoContent]: 메모 본문
   /// [availableFolders]: 사용 가능한 폴더 목록
   /// [maxTags]: 최대 태그 개수
+  /// [allowNewFolder]: 새 폴더 생성 허용 여부
   ///
-  /// Returns: Map with 'folderId' and 'tags'
+  /// Returns: Map with 'folderId', 'tags', 'newFolder' (name, icon, color)
   Future<Map<String, dynamic>> classifyAndGenerateTags({
     required String memoTitle,
     required String memoContent,
     required Map<String, String> availableFolders,
     int maxTags = 5,
+    bool allowNewFolder = true,
   }) async {
     try {
-      final folderList = availableFolders.entries
-          .map((e) => '- ID: ${e.key}, 이름: ${e.value}')
-          .join('\n');
+      final folderList = availableFolders.isEmpty
+          ? '없음'
+          : availableFolders.entries
+              .map((e) => '- ID: ${e.key}, 이름: ${e.value}')
+              .join('\n');
 
-      final prompt = '''
+      final prompt = availableFolders.isEmpty || allowNewFolder
+          ? '''
+사용자가 작성한 메모를 분석하여 적절한 폴더를 선택하거나 새 폴더를 제안하고, 관련 태그를 생성해주세요.
+
+메모 제목: $memoTitle
+메모 내용: $memoContent
+
+${availableFolders.isEmpty ? '현재 폴더가 없습니다.' : '''사용 가능한 기존 폴더:
+$folderList'''}
+
+다음 형식으로만 응답해주세요:
+
+경우 1 - 기존 폴더를 사용하는 경우:
+폴더ID: [폴더 ID]
+태그: [태그1, 태그2, 태그3]
+
+경우 2 - 새 폴더를 제안하는 경우:
+새폴더: [폴더명]
+아이콘: [이모지 1개]
+색상: [blue/red/green/purple/orange/pink/yellow/teal/indigo/gray 중 하나]
+태그: [태그1, 태그2, 태그3]
+
+조건:
+- 기존 폴더 중 적절한 것이 있으면 경우 1로 응답
+- 기존 폴더가 없거나 맞는 것이 없으면 경우 2로 새 폴더 제안
+- 새 폴더명은 2-10자 이내로 간결하게
+- 아이콘은 이모지 1개만 (예: 📝, 💼, 🎯, 📚, 💡)
+- 태그는 최대 $maxTags개, 쉼표로 구분
+- 각 태그는 2-10자 이내
+- 위 형식 외 다른 설명은 포함하지 마세요
+'''
+          : '''
 사용자가 작성한 메모를 분석하여 적절한 폴더를 선택하고 관련 태그를 생성해주세요.
 
 메모 제목: $memoTitle
@@ -185,12 +220,13 @@ $folderList
       final text = response.text?.trim();
 
       if (text == null) {
-        return {'folderId': null, 'tags': <String>[]};
+        return {'folderId': null, 'tags': <String>[], 'newFolder': null};
       }
 
       // 응답 파싱
       String? folderId;
       List<String> tags = [];
+      Map<String, String>? newFolder;
 
       final lines = text.split('\n');
       for (final line in lines) {
@@ -199,6 +235,15 @@ $folderList
           if (availableFolders.containsKey(id)) {
             folderId = id;
           }
+        } else if (line.startsWith('새폴더:')) {
+          final name = line.substring('새폴더:'.length).trim();
+          newFolder = {'name': name, 'icon': '📁', 'color': 'blue'};
+        } else if (line.startsWith('아이콘:') && newFolder != null) {
+          final icon = line.substring('아이콘:'.length).trim();
+          newFolder['icon'] = icon;
+        } else if (line.startsWith('색상:') && newFolder != null) {
+          final color = line.substring('색상:'.length).trim();
+          newFolder['color'] = color;
         } else if (line.startsWith('태그:')) {
           final tagsText = line.substring('태그:'.length).trim();
           tags = tagsText
@@ -210,10 +255,15 @@ $folderList
         }
       }
 
-      return {'folderId': folderId, 'tags': tags};
+      return {
+        'folderId': folderId,
+        'tags': tags,
+        'newFolder': newFolder,
+      };
     } catch (e, stackTrace) {
-      AppLogger.e('Error in classifyAndGenerateTags', error: e, stackTrace: stackTrace);
-      return {'folderId': null, 'tags': <String>[]};
+      AppLogger.e('Error in classifyAndGenerateTags',
+          error: e, stackTrace: stackTrace);
+      return {'folderId': null, 'tags': <String>[], 'newFolder': null};
     }
   }
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../../drawer/presentation/widgets/main_drawer.dart';
 import '../../../auth/data/services/auth_service.dart';
+import '../../../memo/presentation/screens/batch_reclassify_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -265,6 +266,39 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
 
                       const SizedBox(height: 48),
+
+                      // AI 일괄 재분류 버튼
+                      Container(
+                        width: double.infinity,
+                        margin: const EdgeInsets.symmetric(horizontal: 24),
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(
+                                builder: (context) => const BatchReclassifyScreen(),
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.auto_awesome, color: Colors.white),
+                          label: const Text(
+                            'AI 메모 일괄 재분류',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF8B4444),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 32),
 
                       // 로그아웃 / 탈퇴하기
                       Row(

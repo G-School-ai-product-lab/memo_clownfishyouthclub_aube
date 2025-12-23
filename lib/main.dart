@@ -7,6 +7,7 @@ import 'features/auth/presentation/screens/login_screen.dart';
 import 'features/home/presentation/screens/home_screen.dart';
 import 'features/profile/presentation/screens/profile_screen.dart';
 import 'features/memo/presentation/providers/memo_providers.dart';
+import 'features/memo/presentation/providers/folder_providers.dart';
 
 void main() async {
   print('=== APP STARTING ===');
@@ -55,7 +56,35 @@ class PamyoApp extends ConsumerWidget {
           print('Auth state: user = ${user?.uid ?? "null"}');
           // 로그인 상태에 따라 화면 분기
           if (user != null) {
-            return const HomeScreen();
+            // 로그인된 사용자의 경우 온보딩 완료 여부 확인
+            final foldersAsync = ref.watch(foldersStreamProvider);
+
+            return foldersAsync.when(
+              data: (folders) {
+                print('Folders count: ${folders.length}');
+                // 폴더가 없으면 온보딩으로, 있으면 홈으로
+                if (folders.isEmpty) {
+                  return const OnboardingScreen();
+                } else {
+                  return const HomeScreen();
+                }
+              },
+              loading: () {
+                print('Folders loading');
+                return const Scaffold(
+                  body: Center(
+                    child: CircularProgressIndicator(
+                      color: Color(0xFF8B4444),
+                    ),
+                  ),
+                );
+              },
+              error: (error, stack) {
+                print('Folders error: $error');
+                // 에러 발생 시에도 온보딩으로
+                return const OnboardingScreen();
+              },
+            );
           } else {
             return const LoginScreen();
           }

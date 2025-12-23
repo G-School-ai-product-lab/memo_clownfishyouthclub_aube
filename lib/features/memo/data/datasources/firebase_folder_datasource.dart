@@ -31,11 +31,24 @@ class FirebaseFolderDatasource {
     return FolderModel.fromFirestore(doc);
   }
 
-  Future<void> createFolder(FolderModel folder) async {
-    await _firestore
-        .collection('folders')
-        .doc(folder.id)
-        .set(folder.toFirestore());
+  Future<FolderModel> createFolder(FolderModel folder) async {
+    // ID가 비어있으면 자동 생성
+    final docRef = folder.id.isEmpty
+        ? _firestore.collection('folders').doc()
+        : _firestore.collection('folders').doc(folder.id);
+
+    final newFolder = FolderModel(
+      id: docRef.id,
+      userId: folder.userId,
+      name: folder.name,
+      icon: folder.icon,
+      color: folder.color,
+      memoCount: folder.memoCount,
+      createdAt: folder.createdAt,
+    );
+
+    await docRef.set(newFolder.toFirestore());
+    return newFolder;
   }
 
   Future<void> updateFolder(FolderModel folder) async {

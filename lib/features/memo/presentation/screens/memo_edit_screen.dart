@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/entities/memo.dart';
+import '../../domain/entities/folder.dart';
 import '../providers/memo_providers.dart';
 import '../../../ai/presentation/providers/ai_providers.dart';
 import '../providers/folder_providers.dart';
@@ -71,23 +72,16 @@ class _MemoEditScreenState extends ConsumerState<MemoEditScreen> {
       }
 
       final foldersAsync = ref.read(foldersStreamProvider);
-      if (!foldersAsync.hasValue || foldersAsync.value!.isEmpty) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('폴더를 먼저 생성해주세요'),
-              backgroundColor: Colors.orange,
-            ),
-          );
-        }
-        return;
-      }
+      final folders = foldersAsync.hasValue ? foldersAsync.value! : <Folder>[];
+      final folderRepository = ref.read(folderRepositoryProvider);
 
-      final folders = foldersAsync.value!;
       final result = await aiService.classifyMemo(
         title: _titleController.text.trim(),
         content: _contentController.text.trim(),
         folders: folders,
+        userId: widget.memo.userId,
+        folderRepository: folderRepository,
+        allowNewFolder: true,
       );
 
       if (mounted) {
@@ -126,16 +120,28 @@ class _MemoEditScreenState extends ConsumerState<MemoEditScreen> {
           await repository.updateMemo(updatedMemo);
           ref.invalidate(memosStreamProvider);
 
+          // 폴더가 새로 생성되었으면 provider 갱신
+          if (result.newFolderCreated) {
+            ref.invalidate(foldersStreamProvider);
+          }
+
           if (!mounted) return;
 
           Navigator.pop(context, true);
+
+          String message = 'AI가 자동으로 분류했습니다!\n';
+          if (result.newFolderCreated) {
+            message += '새 폴더 생성됨 | ';
+          } else if (result.folderId != null) {
+            message += '폴더 지정됨 | ';
+          }
+          if (result.tags.isNotEmpty) {
+            message += '태그: ${result.tags.join(", ")}';
+          }
+
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(
-                'AI가 자동으로 분류했습니다!\n'
-                '${result.folderId != null ? '폴더 지정됨 | ' : ''}'
-                '${result.tags.isNotEmpty ? '태그: ${result.tags.join(", ")}' : ''}',
-              ),
+              content: Text(message),
               backgroundColor: const Color(0xFF8B4444),
               duration: const Duration(seconds: 3),
             ),

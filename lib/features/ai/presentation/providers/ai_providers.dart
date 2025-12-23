@@ -6,6 +6,7 @@ import '../../data/services/gemini_service.dart';
 import '../../../memo/domain/entities/folder.dart';
 import '../../../memo/domain/entities/tag.dart';
 import '../../../memo/domain/repositories/tag_repository.dart';
+import '../../../memo/domain/repositories/folder_repository.dart';
 
 /// Gemini 서비스 Provider
 final geminiServiceProvider = Provider<GeminiService?>((ref) {
@@ -32,11 +33,14 @@ class AiClassificationService {
   /// AI가 사용 가능한지 확인
   bool get isAvailable => geminiService != null;
 
-  /// 메모를 자동으로 분류하고 태그 생성
+  /// 메모를 자동으로 분류하고 태그 생성 (폴더 자동 생성 포함)
   Future<ClassificationResult> classifyMemo({
     required String title,
     required String content,
     required List<Folder> folders,
+    required String userId,
+    required FolderRepository folderRepository,
+    bool allowNewFolder = true,
   }) async {
     if (geminiService == null) {
       AppLogger.w('AI 분류 시도했으나 geminiService가 null입니다.');
@@ -61,14 +65,43 @@ class AiClassificationService {
         memoContent: content,
         availableFolders: folderMap,
         maxTags: 5,
+        allowNewFolder: allowNewFolder,
       );
 
-      AppLogger.i('AI 분류 완료 - 폴더: ${result['folderId']}, 태그: ${result['tags']}');
+      String? folderId = result['folderId'] as String?;
+      final tags = result['tags'] as List<String>;
+      final newFolderData = result['newFolder'] as Map<String, String>?;
+
+      // 새 폴더 제안이 있으면 생성
+      if (newFolderData != null && allowNewFolder) {
+        AppLogger.i('AI가 새 폴더 제안: ${newFolderData['name']}');
+
+        final newFolder = Folder(
+          id: '', // datasource에서 자동 생성
+          userId: userId,
+          name: newFolderData['name']!,
+          icon: newFolderData['icon'] ?? '📁',
+          color: newFolderData['color'] ?? 'blue',
+          memoCount: 0,
+          createdAt: DateTime.now(),
+        );
+
+        try {
+          final createdFolder = await folderRepository.createFolder(newFolder);
+          folderId = createdFolder.id;
+          AppLogger.i('새 폴더 생성됨: ${createdFolder.name} (${createdFolder.id})');
+        } catch (e) {
+          AppLogger.e('폴더 생성 실패', error: e);
+        }
+      }
+
+      AppLogger.i('AI 분류 완료 - 폴더: $folderId, 태그: $tags');
 
       return ClassificationResult(
-        folderId: result['folderId'] as String?,
-        tags: result['tags'] as List<String>,
+        folderId: folderId,
+        tags: tags,
         error: null,
+        newFolderCreated: newFolderData != null,
       );
     } catch (e, stackTrace) {
       AppLogger.e('AI 분류 중 오류', error: e, stackTrace: stackTrace);
@@ -187,11 +220,13 @@ class ClassificationResult {
   final String? folderId;
   final List<String> tags;
   final String? error;
+  final bool newFolderCreated;
 
   ClassificationResult({
     required this.folderId,
     required this.tags,
     this.error,
+    this.newFolderCreated = false,
   });
 
   bool get hasError => error != null;
