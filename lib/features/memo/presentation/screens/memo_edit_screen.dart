@@ -24,12 +24,16 @@ class _MemoEditScreenState extends ConsumerState<MemoEditScreen> {
   late TextEditingController _contentController;
   bool _isSaving = false;
   bool _isClassifying = false;
+  String? _currentFolderId;
+  List<String> _currentTags = [];
 
   @override
   void initState() {
     super.initState();
     _titleController = TextEditingController(text: widget.memo.title);
     _contentController = TextEditingController(text: widget.memo.content);
+    _currentFolderId = widget.memo.folderId;
+    _currentTags = List.from(widget.memo.tags);
   }
 
   @override
@@ -93,7 +97,7 @@ class _MemoEditScreenState extends ConsumerState<MemoEditScreen> {
             ),
           );
         } else {
-          // AI가 생성한 태그를 데이터베이스에 자동 생성
+          // AI가 생성한 태그를 데이터베이스에 먼저 생성 (메모 저장 전에!)
           if (result.tags.isNotEmpty) {
             final tagRepository = ref.read(tagRepositoryProvider);
             await ensureTagsExist(
@@ -101,6 +105,14 @@ class _MemoEditScreenState extends ConsumerState<MemoEditScreen> {
               userId: widget.memo.userId,
               tagRepository: tagRepository,
             );
+
+            // 태그 생성이 완료될 때까지 잠시 대기
+            await Future.delayed(const Duration(milliseconds: 200));
+          }
+
+          // 폴더가 새로 생성되었으면 완료될 때까지 대기
+          if (result.newFolderCreated) {
+            await Future.delayed(const Duration(milliseconds: 200));
           }
 
           // AI 분류 결과를 메모에 적용하고 저장
@@ -183,14 +195,68 @@ class _MemoEditScreenState extends ConsumerState<MemoEditScreen> {
     });
 
     try {
+      // 수동으로 선택된 폴더/태그 사용
+      String? finalFolderId = _currentFolderId;
+      List<String> finalTags = List.from(_currentTags);
+      bool newFolderCreated = false;
+
+      // 수동 선택이 없고 AI 서비스가 사용 가능하면 자동 분류 실행
+      final aiService = ref.read(aiClassificationServiceProvider);
+      if (finalFolderId == null && finalTags.isEmpty && aiService.isAvailable) {
+        final foldersAsync = ref.read(foldersStreamProvider);
+        final folders = foldersAsync.hasValue ? foldersAsync.value! : <Folder>[];
+        final folderRepository = ref.read(folderRepositoryProvider);
+
+        final result = await aiService.classifyMemo(
+          title: _titleController.text.trim(),
+          content: _contentController.text.trim(),
+          folders: folders,
+          userId: widget.memo.userId,
+          folderRepository: folderRepository,
+          allowNewFolder: true,
+        );
+
+        if (!result.hasError) {
+          finalFolderId = result.folderId;
+          finalTags = result.tags;
+          newFolderCreated = result.newFolderCreated;
+
+          // AI가 생성한 태그를 데이터베이스에 먼저 생성 (메모 저장 전에!)
+          if (result.tags.isNotEmpty) {
+            final tagRepository = ref.read(tagRepositoryProvider);
+            await ensureTagsExist(
+              tagNames: result.tags,
+              userId: widget.memo.userId,
+              tagRepository: tagRepository,
+            );
+
+            // 태그 생성이 완료될 때까지 잠시 대기
+            await Future.delayed(const Duration(milliseconds: 200));
+          }
+
+          // 폴더가 새로 생성되었으면 provider 갱신하고 완료될 때까지 대기
+          if (result.newFolderCreated) {
+            ref.invalidate(foldersStreamProvider);
+            // 폴더 생성이 완료될 때까지 잠시 대기
+            await Future.delayed(const Duration(milliseconds: 200));
+          }
+
+          // 로컬 상태 업데이트 (UI 즉시 반영)
+          setState(() {
+            _currentFolderId = finalFolderId;
+            _currentTags = List.from(finalTags);
+          });
+        }
+      }
+
       final repository = ref.read(memoRepositoryProvider);
       final updatedMemo = Memo(
         id: widget.memo.id,
         userId: widget.memo.userId,
         title: _titleController.text.trim(),
         content: _contentController.text.trim(),
-        tags: widget.memo.tags,
-        folderId: widget.memo.folderId,
+        tags: finalTags,
+        folderId: finalFolderId,
         createdAt: widget.memo.createdAt,
         updatedAt: DateTime.now(),
         isPinned: widget.memo.isPinned,
@@ -202,11 +268,32 @@ class _MemoEditScreenState extends ConsumerState<MemoEditScreen> {
         // Provider 갱신
         ref.invalidate(memosStreamProvider);
 
+        // 저장 성공 시 로컬 상태 업데이트
+        setState(() {
+          _currentFolderId = finalFolderId;
+          _currentTags = List.from(finalTags);
+        });
+
         Navigator.pop(context, true);
+
+        String message = '메모가 저장되었습니다';
+        if (aiService.isAvailable) {
+          message = 'AI가 자동으로 분류했습니다!\n';
+          if (newFolderCreated) {
+            message += '새 폴더 생성됨 | ';
+          } else if (finalFolderId != null) {
+            message += '폴더 지정됨 | ';
+          }
+          if (finalTags.isNotEmpty) {
+            message += '태그: ${finalTags.join(", ")}';
+          }
+        }
+
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('메모가 수정되었습니다'),
-            backgroundColor: Color(0xFF8B4444),
+          SnackBar(
+            content: Text(message),
+            backgroundColor: const Color(0xFF8B4444),
+            duration: const Duration(seconds: 3),
           ),
         );
       }
@@ -226,6 +313,152 @@ class _MemoEditScreenState extends ConsumerState<MemoEditScreen> {
         });
       }
     }
+  }
+
+  Widget _buildFolderTagSelector() {
+    final foldersAsync = ref.watch(foldersStreamProvider);
+    final tagsAsync = ref.watch(tagsStreamProvider);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // 폴더 선택
+        foldersAsync.when(
+          data: (folders) {
+            if (folders.isEmpty) return const SizedBox.shrink();
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.folder_outlined, size: 16, color: Colors.grey),
+                    const SizedBox(width: 4),
+                    const Text(
+                      '폴더',
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: folders.map((folder) {
+                    final isSelected = _currentFolderId == folder.id;
+                    return GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _currentFolderId = isSelected ? null : folder.id;
+                        });
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? const Color(0xFF8B4444).withAlpha(51)
+                              : Colors.grey[100],
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: isSelected
+                                ? const Color(0xFF8B4444)
+                                : Colors.transparent,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(folder.icon, style: const TextStyle(fontSize: 14)),
+                            const SizedBox(width: 4),
+                            Text(
+                              folder.name,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: isSelected ? const Color(0xFF8B4444) : Colors.black87,
+                                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 12),
+              ],
+            );
+          },
+          loading: () => const SizedBox.shrink(),
+          error: (_, __) => const SizedBox.shrink(),
+        ),
+
+        // 태그 선택
+        tagsAsync.when(
+          data: (tags) {
+            if (tags.isEmpty) return const SizedBox.shrink();
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.tag, size: 16, color: Colors.grey),
+                    const SizedBox(width: 4),
+                    const Text(
+                      '태그',
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: tags.map((tag) {
+                    final isSelected = _currentTags.contains(tag.name);
+                    return GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          if (isSelected) {
+                            _currentTags.remove(tag.name);
+                          } else {
+                            _currentTags.add(tag.name);
+                          }
+                        });
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? const Color(0xFF8B4444).withAlpha(51)
+                              : Colors.grey[100],
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: isSelected
+                                ? const Color(0xFF8B4444)
+                                : Colors.transparent,
+                          ),
+                        ),
+                        child: Text(
+                          '#${tag.name}',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: isSelected ? const Color(0xFF8B4444) : Colors.black87,
+                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ],
+            );
+          },
+          loading: () => const SizedBox.shrink(),
+          error: (_, __) => const SizedBox.shrink(),
+        ),
+      ],
+    );
   }
 
   @override
@@ -302,6 +535,11 @@ class _MemoEditScreenState extends ConsumerState<MemoEditScreen> {
                     ),
                     maxLines: null,
                   ),
+                  const SizedBox(height: 16),
+
+                  // 폴더/태그 선택 영역
+                  _buildFolderTagSelector(),
+
                   const SizedBox(height: 16),
                   // 내용 입력
                   TextField(

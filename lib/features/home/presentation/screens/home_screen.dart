@@ -40,7 +40,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final memosAsync = ref.watch(memosStreamProvider);
+    final memosAsync = ref.watch(filteredMemosProvider);
     final currentFilter = ref.watch(memoFilterProvider);
     final userId = ref.watch(currentUserIdProvider);
 

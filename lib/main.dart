@@ -53,24 +53,34 @@ class PamyoApp extends ConsumerWidget {
       ),
       home: authState.when(
         data: (user) {
-          print('Auth state: user = ${user?.uid ?? "null"}');
+          print('🔍 Auth state: user = ${user?.uid ?? "null"}');
           // 로그인 상태에 따라 화면 분기
           if (user != null) {
+            print('✅ User logged in: ${user.uid}');
             // 로그인된 사용자의 경우 온보딩 완료 여부 확인
             final foldersAsync = ref.watch(foldersStreamProvider);
+            print('📁 Watching folders stream...');
 
             return foldersAsync.when(
               data: (folders) {
-                print('Folders count: ${folders.length}');
+                print('📊 Folders loaded: ${folders.length} folders');
+                if (folders.isNotEmpty) {
+                  print('Folder details:');
+                  for (var folder in folders) {
+                    print('  - ${folder.name} (${folder.id})');
+                  }
+                }
                 // 폴더가 없으면 온보딩으로, 있으면 홈으로
                 if (folders.isEmpty) {
+                  print('🎯 No folders found -> Showing OnboardingScreen');
                   return const OnboardingScreen();
                 } else {
+                  print('🏠 Folders exist -> Showing HomeScreen');
                   return const HomeScreen();
                 }
               },
               loading: () {
-                print('Folders loading');
+                print('⏳ Folders loading...');
                 return const Scaffold(
                   body: Center(
                     child: CircularProgressIndicator(
@@ -80,17 +90,20 @@ class PamyoApp extends ConsumerWidget {
                 );
               },
               error: (error, stack) {
-                print('Folders error: $error');
+                print('❌ Folders error: $error');
+                print('Stack trace: $stack');
+                print('🎯 Error occurred -> Showing OnboardingScreen');
                 // 에러 발생 시에도 온보딩으로
                 return const OnboardingScreen();
               },
             );
           } else {
+            print('🚪 No user -> Showing LoginScreen');
             return const LoginScreen();
           }
         },
         loading: () {
-          print('Auth state: loading');
+          print('⏳ Auth state: loading');
           return const Scaffold(
             body: Center(
               child: CircularProgressIndicator(
@@ -100,7 +113,7 @@ class PamyoApp extends ConsumerWidget {
           );
         },
         error: (error, stack) {
-          print('Auth state error: $error');
+          print('❌ Auth state error: $error');
           return const LoginScreen();
         },
       ),

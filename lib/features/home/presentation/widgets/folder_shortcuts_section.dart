@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../../core/utils/app_logger.dart';
 import '../../../memo/presentation/providers/filter_providers.dart';
 import '../../../memo/presentation/providers/folder_providers.dart';
+import '../../../memo/presentation/providers/memo_providers.dart';
 import '../../../memo/presentation/screens/all_memos_screen.dart';
 
 class FolderShortcutsSection extends ConsumerWidget {
@@ -10,6 +12,16 @@ class FolderShortcutsSection extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final foldersAsync = ref.watch(foldersStreamProvider);
+    final userId = ref.watch(currentUserIdProvider);
+
+    // 디버깅: userId와 폴더 상태 로그
+    AppLogger.d('FolderShortcutsSection - userId: $userId');
+    foldersAsync.whenData((folders) {
+      AppLogger.d('FolderShortcutsSection - folders count: ${folders.length}');
+      for (var folder in folders) {
+        AppLogger.d('  - ${folder.name} (${folder.id}): ${folder.memoCount}개');
+      }
+    });
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -25,8 +37,9 @@ class FolderShortcutsSection extends ConsumerWidget {
             ),
           ),
         ),
+        // ✅ height를 살짝 여유 있게 (iOS 폰트/라인하이트로 인한 overflow 방지)
         SizedBox(
-          height: 100,
+          height: 112,
           child: foldersAsync.when(
             data: (folders) {
               if (folders.isEmpty) {
@@ -71,7 +84,9 @@ class FolderShortcutsSection extends ConsumerWidget {
                     count: folder.memoCount,
                     onTap: () {
                       // 폴더 필터 적용
-                      ref.read(memoFilterProvider.notifier).setFolderFilter(folder);
+                      ref
+                          .read(memoFilterProvider.notifier)
+                          .setFolderFilter(folder);
                       // 전체 메모 화면으로 이동
                       Navigator.push(
                         context,
@@ -110,6 +125,7 @@ class FolderShortcutsSection extends ConsumerWidget {
         width: 120,
         margin: const EdgeInsets.symmetric(horizontal: 4),
         padding: const EdgeInsets.all(12),
+        alignment: Alignment.center, // ✅ 가운데 정렬 고정
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
@@ -123,11 +139,15 @@ class FolderShortcutsSection extends ConsumerWidget {
           ],
         ),
         child: Column(
+          mainAxisSize: MainAxisSize.min, // ✅ 내용만큼만 높이 사용 (overflow 방지)
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Text(
               icon,
-              style: const TextStyle(fontSize: 32),
+              style: const TextStyle(
+                fontSize: 32,
+                height: 1.0, // ✅ 이모지 라인하이트로 아래로 밀리는 것 방지
+              ),
             ),
             const SizedBox(height: 8),
             Text(
@@ -136,6 +156,7 @@ class FolderShortcutsSection extends ConsumerWidget {
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
                 color: Colors.black87,
+                height: 1.1, // ✅ 텍스트 줄높이 살짝 고정
               ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -146,7 +167,10 @@ class FolderShortcutsSection extends ConsumerWidget {
               style: TextStyle(
                 fontSize: 12,
                 color: Colors.grey[600],
+                height: 1.0, // ✅ iOS에서 아래로 밀려 overflow 나는 것 방지
               ),
+              maxLines: 1,
+              overflow: TextOverflow.clip,
             ),
           ],
         ),

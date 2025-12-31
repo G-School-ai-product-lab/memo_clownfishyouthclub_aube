@@ -22,6 +22,10 @@ class _MemoCreateScreenState extends ConsumerState<MemoCreateScreen> {
   bool _isSaving = false;
   bool _isClassifying = false;
 
+  // 수동 선택된 폴더와 태그
+  String? _selectedFolderId;
+  final Set<String> _selectedTags = {};
+
   @override
   void initState() {
     super.initState();
@@ -194,13 +198,14 @@ class _MemoCreateScreenState extends ConsumerState<MemoCreateScreen> {
     });
 
     try {
-      // AI 자동 분류 시도
-      String? folderId;
-      List<String> tags = [];
+      // 수동 선택이 있으면 우선 사용, 없으면 AI 자동 분류 시도
+      String? folderId = _selectedFolderId;
+      List<String> tags = _selectedTags.toList();
       bool newFolderCreated = false;
 
+      // 수동 선택이 없고 AI 서비스가 사용 가능한 경우에만 AI 분류
       final aiService = ref.read(aiClassificationServiceProvider);
-      if (aiService.isAvailable) {
+      if (folderId == null && tags.isEmpty && aiService.isAvailable) {
         try {
           final foldersAsync = ref.read(foldersStreamProvider);
           final folders = foldersAsync.hasValue ? foldersAsync.value! : <Folder>[];
@@ -220,7 +225,7 @@ class _MemoCreateScreenState extends ConsumerState<MemoCreateScreen> {
             tags = result.tags;
             newFolderCreated = result.newFolderCreated;
 
-            // AI가 생성한 태그를 데이터베이스에 자동 생성
+            // AI가 생성한 태그를 데이터베이스에 먼저 생성 (메모 저장 전에!)
             if (tags.isNotEmpty) {
               final tagRepository = ref.read(tagRepositoryProvider);
               await ensureTagsExist(
@@ -228,11 +233,16 @@ class _MemoCreateScreenState extends ConsumerState<MemoCreateScreen> {
                 userId: userId,
                 tagRepository: tagRepository,
               );
+
+              // 태그 생성이 완료될 때까지 잠시 대기
+              await Future.delayed(const Duration(milliseconds: 200));
             }
 
-            // 폴더가 새로 생성되었으면 provider 갱신
+            // 폴더가 새로 생성되었으면 provider 갱신하고 완료될 때까지 대기
             if (newFolderCreated) {
               ref.invalidate(foldersStreamProvider);
+              // 폴더 생성이 완료될 때까지 잠시 대기
+              await Future.delayed(const Duration(milliseconds: 200));
             }
           }
         } catch (e) {
@@ -294,6 +304,8 @@ class _MemoCreateScreenState extends ConsumerState<MemoCreateScreen> {
     String? folderId,
     List<String> tags = const [],
   }) async {
+    AppLogger.i('메모 저장 시작 - folderId: $folderId, tags: $tags');
+
     final now = DateTime.now();
     final memo = Memo(
       id: const Uuid().v4(),
@@ -308,9 +320,159 @@ class _MemoCreateScreenState extends ConsumerState<MemoCreateScreen> {
       updatedAt: now,
     );
 
+    AppLogger.i('생성된 메모: id=${memo.id}, folderId=${memo.folderId}, tags=${memo.tags}');
+
     final repository = ref.read(memoRepositoryProvider);
     await repository.createMemo(memo);
+
+    AppLogger.i('메모 저장 완료');
     ref.invalidate(memosStreamProvider);
+  }
+
+  Widget _buildFolderTagSelector() {
+    final foldersAsync = ref.watch(foldersStreamProvider);
+    final tagsAsync = ref.watch(tagsStreamProvider);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // 폴더 선택
+        foldersAsync.when(
+          data: (folders) {
+            if (folders.isEmpty) return const SizedBox.shrink();
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.folder_outlined, size: 16, color: Colors.grey),
+                    const SizedBox(width: 4),
+                    const Text(
+                      '폴더',
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: folders.map((folder) {
+                    final isSelected = _selectedFolderId == folder.id;
+                    return GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          _selectedFolderId = isSelected ? null : folder.id;
+                        });
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? const Color(0xFF8B4444).withAlpha(51)
+                              : Colors.grey[100],
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: isSelected
+                                ? const Color(0xFF8B4444)
+                                : Colors.transparent,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(folder.icon, style: const TextStyle(fontSize: 14)),
+                            const SizedBox(width: 4),
+                            Text(
+                              folder.name,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: isSelected ? const Color(0xFF8B4444) : Colors.black87,
+                                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 12),
+              ],
+            );
+          },
+          loading: () => const SizedBox.shrink(),
+          error: (_, __) => const SizedBox.shrink(),
+        ),
+
+        // 태그 선택
+        tagsAsync.when(
+          data: (tags) {
+            if (tags.isEmpty) return const SizedBox.shrink();
+
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Icon(Icons.tag, size: 16, color: Colors.grey),
+                    const SizedBox(width: 4),
+                    const Text(
+                      '태그',
+                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: tags.map((tag) {
+                    final isSelected = _selectedTags.contains(tag.name);
+                    return GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          if (isSelected) {
+                            _selectedTags.remove(tag.name);
+                          } else {
+                            _selectedTags.add(tag.name);
+                          }
+                        });
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? const Color(0xFF8B4444).withAlpha(51)
+                              : Colors.grey[100],
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: isSelected
+                                ? const Color(0xFF8B4444)
+                                : Colors.transparent,
+                          ),
+                        ),
+                        child: Text(
+                          '#${tag.name}',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: isSelected ? const Color(0xFF8B4444) : Colors.black87,
+                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ],
+            );
+          },
+          loading: () => const SizedBox.shrink(),
+          error: (_, __) => const SizedBox.shrink(),
+        ),
+      ],
+    );
   }
 
   @override
@@ -388,6 +550,11 @@ class _MemoCreateScreenState extends ConsumerState<MemoCreateScreen> {
                     ),
                     maxLines: null,
                   ),
+                  const SizedBox(height: 16),
+
+                  // 폴더/태그 선택 영역
+                  _buildFolderTagSelector(),
+
                   const SizedBox(height: 16),
                   // 내용 입력
                   TextField(

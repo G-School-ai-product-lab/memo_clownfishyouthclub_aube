@@ -5,6 +5,8 @@ import '../../../../core/utils/app_logger.dart';
 import '../../../memo/presentation/providers/folder_providers.dart';
 import '../../../memo/presentation/providers/tag_providers.dart';
 import '../../../memo/presentation/providers/filter_providers.dart';
+import '../../../memo/presentation/screens/folder_create_screen.dart';
+import '../../../memo/presentation/screens/tag_create_screen.dart';
 import '../../../profile/presentation/screens/profile_screen.dart';
 import 'drawer_profile_header.dart';
 import 'folder_list_item.dart';
@@ -55,9 +57,31 @@ class MainDrawer extends ConsumerWidget {
                     const SizedBox(height: 8),
 
                     // 나의 폴더 섹션
-                    _buildSectionHeader('나의 폴더'),
+                    _buildSectionHeaderWithButton(
+                      context,
+                      ref,
+                      '나의 폴더',
+                      onAdd: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const FolderCreateScreen(),
+                          ),
+                        ).then((created) {
+                          if (created == true) {
+                            ref.invalidate(foldersStreamProvider);
+                          }
+                        });
+                      },
+                    ),
                     foldersAsync.when(
                       data: (folders) {
+                        AppLogger.d('MainDrawer - Folders count: ${folders.length}');
+                        for (var folder in folders) {
+                          AppLogger.d('  - ${folder.name} (${folder.id})');
+                        }
+
                         if (folders.isEmpty) {
                           return _buildEmptyState('폴더가 없습니다');
                         }
@@ -103,9 +127,31 @@ class MainDrawer extends ConsumerWidget {
                     const SizedBox(height: 16),
 
                     // 나의 태그 섹션
-                    _buildSectionHeader('나의 태그'),
+                    _buildSectionHeaderWithButton(
+                      context,
+                      ref,
+                      '나의 태그',
+                      onAdd: () {
+                        Navigator.pop(context);
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => const TagCreateScreen(),
+                          ),
+                        ).then((created) {
+                          if (created == true) {
+                            ref.invalidate(tagsStreamProvider);
+                          }
+                        });
+                      },
+                    ),
                     tagsAsync.when(
                       data: (tags) {
+                        AppLogger.d('MainDrawer - Tags count: ${tags.length}');
+                        for (var tag in tags) {
+                          AppLogger.d('  - ${tag.name} (${tag.id})');
+                        }
+
                         if (tags.isEmpty) {
                           return _buildEmptyState('태그가 없습니다');
                         }
@@ -167,6 +213,37 @@ class MainDrawer extends ConsumerWidget {
           fontWeight: FontWeight.bold,
           color: Colors.black87,
         ),
+      ),
+    );
+  }
+
+  Widget _buildSectionHeaderWithButton(
+    BuildContext context,
+    WidgetRef ref,
+    String title, {
+    required VoidCallback onAdd,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      child: Row(
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
+            ),
+          ),
+          const Spacer(),
+          IconButton(
+            icon: const Icon(Icons.add, size: 22),
+            color: const Color(0xFF8B4444),
+            padding: const EdgeInsets.all(4),
+            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+            onPressed: onAdd,
+          ),
+        ],
       ),
     );
   }

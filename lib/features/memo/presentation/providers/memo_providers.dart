@@ -4,6 +4,8 @@ import '../../data/datasources/firebase_memo_datasource.dart';
 import '../../data/repositories/memo_repository_impl.dart';
 import '../../domain/entities/memo.dart';
 import '../../domain/repositories/memo_repository.dart';
+import 'tag_providers.dart';
+import 'folder_providers.dart';
 
 // Firebase 기반 DataSource
 final memoDataSourceProvider = Provider<FirebaseMemoDataSource>((ref) {
@@ -12,7 +14,13 @@ final memoDataSourceProvider = Provider<FirebaseMemoDataSource>((ref) {
 
 final memoRepositoryProvider = Provider<MemoRepository>((ref) {
   final dataSource = ref.watch(memoDataSourceProvider);
-  return MemoRepositoryImpl(dataSource: dataSource);
+  final tagRepository = ref.watch(tagRepositoryProvider);
+  final folderRepository = ref.watch(folderRepositoryProvider);
+  return MemoRepositoryImpl(
+    dataSource: dataSource,
+    tagRepository: tagRepository,
+    folderRepository: folderRepository,
+  );
 });
 
 // Firebase Auth 사용자 스트림
