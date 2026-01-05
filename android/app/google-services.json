@@ -12,7 +12,20 @@
           "package_name": "com.clownfishyouthclub.aube.memo"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "395596167392-3d1akui7ifp5847slaurg8nols1dhho3.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.clownfishyouthclub.aube.memo",
+            "certificate_hash": "ebc27d9b2fe5ba2fa2dc776d1fd12e05269adbbe"
+          }
+        },
+        {
+          "client_id": "395596167392-pto1lhm9shr94234k822h6b4mtgrnfu0.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyDrkhDXaBs8KDlUNDzcfhu1-PtbkPsw0ZI"
@@ -20,7 +33,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "395596167392-pto1lhm9shr94234k822h6b4mtgrnfu0.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "395596167392-1noqpqdfdhso03b24k086pq5v1gk6inu.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.pamyoOne"
+              }
+            }
+          ]
         }
       }
     }

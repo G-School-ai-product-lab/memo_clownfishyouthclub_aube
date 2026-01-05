@@ -205,11 +205,16 @@ class _MemoCreateScreenState extends ConsumerState<MemoCreateScreen> {
 
       // 수동 선택이 없고 AI 서비스가 사용 가능한 경우에만 AI 분류
       final aiService = ref.read(aiClassificationServiceProvider);
+      AppLogger.i('🤖 AI 서비스 확인 - isAvailable: ${aiService.isAvailable}, folderId: $folderId, tags: $tags');
+
       if (folderId == null && tags.isEmpty && aiService.isAvailable) {
+        AppLogger.i('🚀 AI 자동 분류 시작...');
         try {
           final foldersAsync = ref.read(foldersStreamProvider);
           final folders = foldersAsync.hasValue ? foldersAsync.value! : <Folder>[];
           final folderRepository = ref.read(folderRepositoryProvider);
+
+          AppLogger.i('📁 현재 폴더 수: ${folders.length}');
 
           final result = await aiService.classifyMemo(
             title: _titleController.text.trim(),
@@ -220,10 +225,14 @@ class _MemoCreateScreenState extends ConsumerState<MemoCreateScreen> {
             allowNewFolder: true,
           );
 
+          AppLogger.i('✅ AI 분류 결과 받음 - hasError: ${result.hasError}, folderId: ${result.folderId}, tags: ${result.tags}');
+
           if (!result.hasError) {
             folderId = result.folderId;
             tags = result.tags;
             newFolderCreated = result.newFolderCreated;
+
+            AppLogger.i('💾 AI 분류 결과 적용 - folderId: $folderId, tags: $tags, newFolderCreated: $newFolderCreated');
 
             // AI가 생성한 태그를 데이터베이스에 먼저 생성 (메모 저장 전에!)
             if (tags.isNotEmpty) {

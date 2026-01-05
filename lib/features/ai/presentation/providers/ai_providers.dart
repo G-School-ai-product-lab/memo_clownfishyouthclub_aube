@@ -1,37 +1,36 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter/material.dart';
 import '../../../../core/config/env_config.dart';
 import '../../../../core/utils/app_logger.dart';
-import '../../data/services/gemini_service.dart';
+import '../../data/services/groq_service.dart';
 import '../../../memo/domain/entities/folder.dart';
 import '../../../memo/domain/entities/tag.dart';
 import '../../../memo/domain/repositories/tag_repository.dart';
 import '../../../memo/domain/repositories/folder_repository.dart';
 
-/// Gemini 서비스 Provider
-final geminiServiceProvider = Provider<GeminiService?>((ref) {
-  if (!EnvConfig.hasGeminiApiKey) {
-    AppLogger.w('Gemini API 키가 설정되지 않았습니다.');
+/// Groq 서비스 Provider
+final groqServiceProvider = Provider<GroqService?>((ref) {
+  if (!EnvConfig.hasGroqApiKey) {
+    AppLogger.w('Groq API 키가 설정되지 않았습니다.');
     return null;
   }
-  AppLogger.i('Gemini API 키 확인됨: ${EnvConfig.geminiApiKey.substring(0, 10)}...');
-  return GeminiService(apiKey: EnvConfig.geminiApiKey);
+  AppLogger.i('Groq API 키 확인됨: ${EnvConfig.groqApiKey.substring(0, 10)}...');
+  return GroqService(apiKey: EnvConfig.groqApiKey);
 });
 
 /// AI 자동 분류 서비스 Provider
 final aiClassificationServiceProvider = Provider<AiClassificationService>((ref) {
-  final geminiService = ref.watch(geminiServiceProvider);
-  return AiClassificationService(geminiService: geminiService);
+  final groqService = ref.watch(groqServiceProvider);
+  return AiClassificationService(groqService: groqService);
 });
 
 /// AI 자동 분류 서비스
 class AiClassificationService {
-  final GeminiService? geminiService;
+  final GroqService? groqService;
 
-  AiClassificationService({required this.geminiService});
+  AiClassificationService({required this.groqService});
 
   /// AI가 사용 가능한지 확인
-  bool get isAvailable => geminiService != null;
+  bool get isAvailable => groqService != null;
 
   /// 메모를 자동으로 분류하고 태그 생성 (폴더 자동 생성 포함)
   Future<ClassificationResult> classifyMemo({
@@ -42,8 +41,8 @@ class AiClassificationService {
     required FolderRepository folderRepository,
     bool allowNewFolder = true,
   }) async {
-    if (geminiService == null) {
-      AppLogger.w('AI 분류 시도했으나 geminiService가 null입니다.');
+    if (groqService == null) {
+      AppLogger.w('AI 분류 시도했으나 groqService가 null입니다.');
       return ClassificationResult(
         folderId: null,
         tags: [],
@@ -60,7 +59,7 @@ class AiClassificationService {
       };
 
       // AI로 폴더와 태그 동시 분류
-      final result = await geminiService!.classifyAndGenerateTags(
+      final result = await groqService!.classifyAndGenerateTags(
         memoTitle: title,
         memoContent: content,
         availableFolders: folderMap,
@@ -115,9 +114,9 @@ class AiClassificationService {
 
   /// 메모 제목 자동 생성
   Future<String?> generateTitle(String content) async {
-    if (geminiService == null) return null;
+    if (groqService == null) return null;
     try {
-      return await geminiService!.generateTitle(memoContent: content);
+      return await groqService!.generateTitle(memoContent: content);
     } catch (e) {
       return null;
     }
@@ -129,14 +128,14 @@ class AiClassificationService {
     required String content,
     required List<Folder> folders,
   }) async {
-    if (geminiService == null) return null;
+    if (groqService == null) return null;
 
     try {
       final folderMap = {
         for (var folder in folders) folder.id: folder.name,
       };
 
-      return await geminiService!.classifyMemoToFolder(
+      return await groqService!.classifyMemoToFolder(
         memoTitle: title,
         memoContent: content,
         availableFolders: folderMap,
@@ -151,10 +150,10 @@ class AiClassificationService {
     required String title,
     required String content,
   }) async {
-    if (geminiService == null) return [];
+    if (groqService == null) return [];
 
     try {
-      return await geminiService!.generateTags(
+      return await groqService!.generateTags(
         memoTitle: title,
         memoContent: content,
         maxTags: 5,

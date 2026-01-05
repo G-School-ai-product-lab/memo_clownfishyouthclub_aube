@@ -8,9 +8,15 @@ import 'features/home/presentation/screens/home_screen.dart';
 import 'features/profile/presentation/screens/profile_screen.dart';
 import 'features/memo/presentation/providers/memo_providers.dart';
 import 'features/memo/presentation/providers/folder_providers.dart';
+import 'features/ai/presentation/providers/ai_providers.dart';
+import 'core/config/env_config.dart';
 
 void main() async {
   print('=== APP STARTING ===');
+  print('🔑 Groq API Key: ${EnvConfig.hasGroqApiKey ? "✅ Available" : "❌ Missing"}');
+  if (EnvConfig.hasGroqApiKey) {
+    print('   Key preview: ${EnvConfig.groqApiKey.substring(0, 10)}...');
+  }
   WidgetsFlutterBinding.ensureInitialized();
   print('WidgetsFlutterBinding initialized');
 

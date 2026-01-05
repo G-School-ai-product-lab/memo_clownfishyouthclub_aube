@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_generative_ai/google_generative_ai.dart';
 import '../../../ai/presentation/providers/ai_providers.dart';
 import '../../../memo/domain/entities/memo.dart';
 import '../../../memo/presentation/providers/memo_providers.dart';
@@ -37,8 +36,8 @@ class _AiSearchScreenState extends ConsumerState<AiSearchScreen> {
     });
 
     try {
-      final geminiService = ref.read(geminiServiceProvider);
-      if (geminiService == null) {
+      final groqService = ref.read(groqServiceProvider);
+      if (groqService == null) {
         setState(() {
           _errorMessage = 'AI 검색 기능을 사용할 수 없습니다. API 키를 확인해주세요.';
           _isSearching = false;
@@ -59,7 +58,7 @@ class _AiSearchScreenState extends ConsumerState<AiSearchScreen> {
       }
 
       // AI로 자연어 쿼리를 검색 키워드로 변환
-      final searchKeywords = await _extractSearchKeywords(query, geminiService);
+      final searchKeywords = await _extractSearchKeywords(query, groqService);
 
       // 키워드를 기반으로 메모 필터링 및 점수 계산
       final scoredMemos = <MapEntry<Memo, double>>[];
@@ -88,34 +87,18 @@ class _AiSearchScreenState extends ConsumerState<AiSearchScreen> {
 
   Future<List<String>> _extractSearchKeywords(
     String query,
-    dynamic geminiService,
+    dynamic groqService,
   ) async {
     try {
-      final prompt = '''
-사용자의 자연어 검색 쿼리에서 핵심 키워드를 추출해주세요.
+      final keywords = await groqService.generateTags(
+        memoTitle: query,
+        memoContent: '',
+        maxTags: 5,
+      );
 
-검색 쿼리: $query
+      if (keywords.isEmpty) return [query];
 
-조건:
-- 검색에 사용할 핵심 키워드만 추출
-- 쉼표(,)로 구분
-- 최대 5개의 키워드
-- 키워드만 응답하고 다른 설명은 포함하지 마세요
-- 예시: 회의, 프로젝트, 마감일, 중요
-''';
-
-      final response = await geminiService.generateContent([
-        Content.text(prompt),
-      ]);
-
-      final text = response.text?.trim() ?? '';
-      if (text.isEmpty) return [query];
-
-      return text
-          .split(',')
-          .map((k) => k.trim())
-          .where((k) => k.isNotEmpty)
-          .toList();
+      return keywords;
     } catch (e) {
       return [query];
     }

@@ -55,7 +55,7 @@ dependencies:
   logger: ^2.5.0
 
   # AI
-  google_generative_ai: ^0.4.6
+  google_generative_ai: ^0.4.7
   http: ^1.2.2
 
 dev_dependencies:

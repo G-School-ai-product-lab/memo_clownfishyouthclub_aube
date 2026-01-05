@@ -1,12 +1,20 @@
 /// 환경 변수 설정 클래스
 class EnvConfig {
-  /// Gemini API Key
+  /// Groq API Key
   /// 실제 사용 시 환경 변수나 secure storage에서 로드해야 함
-  static const String geminiApiKey = String.fromEnvironment(
-    'GEMINI_API_KEY',
-    defaultValue: 'AIzaSyBqVbKNTNSdEy4eO9ciEZ9HynK6GnAli00', // 기본값 설정
+  /// 사용 방법: flutter run --dart-define=GROQ_API_KEY=your_key_here
+  static const String groqApiKey = String.fromEnvironment(
+    'GROQ_API_KEY',
+    defaultValue: '', // TODO: 환경 변수로 설정 필요
   );
 
   /// API 키가 설정되어 있는지 확인
-  static bool get hasGeminiApiKey => geminiApiKey.isNotEmpty;
+  static bool get hasGroqApiKey => groqApiKey.isNotEmpty;
+
+  /// 레거시 Gemini 호환성을 위한 getter
+  @Deprecated('Use groqApiKey instead')
+  static String get geminiApiKey => groqApiKey;
+
+  @Deprecated('Use hasGroqApiKey instead')
+  static bool get hasGeminiApiKey => hasGroqApiKey;
 }

@@ -1,25 +1,51 @@
-import 'package:google_generative_ai/google_generative_ai.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 import '../../../../core/utils/app_logger.dart';
 
-/// Gemini API 서비스 클래스
+/// Groq API 서비스 클래스
 /// 메모 분류, 태그 생성 등 AI 기능 제공
-class GeminiService {
-  late final GenerativeModel _model;
+class GroqService {
   final String apiKey;
+  final String baseUrl = 'https://api.groq.com/openai/v1';
+  final String model = 'llama-3.3-70b-versatile'; // 한국어 지원이 우수한 모델
 
-  GeminiService({required this.apiKey}) {
-    // gemini-2.0-flash-exp 실험적 모델 사용
-    _model = GenerativeModel(
-      model: 'gemini-2.0-flash-exp',
-      apiKey: apiKey,
-      generationConfig: GenerationConfig(
-        temperature: 0.7,
-        topK: 40,
-        topP: 0.95,
-        maxOutputTokens: 1024,
-      ),
-    );
-    print('🔧 Gemini Service initialized: model=gemini-2.0-flash-exp, apiKey=${apiKey.substring(0, 10)}...');
+  GroqService({required this.apiKey}) {
+    AppLogger.i('🔧 Groq Service initialized: model=$model, apiKey=${apiKey.substring(0, 10)}...');
+  }
+
+  /// Groq API 호출
+  Future<String?> _generateContent(String prompt) async {
+    try {
+      final response = await http.post(
+        Uri.parse('$baseUrl/chat/completions'),
+        headers: {
+          'Authorization': 'Bearer $apiKey',
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode({
+          'model': model,
+          'messages': [
+            {
+              'role': 'user',
+              'content': prompt,
+            }
+          ],
+          'temperature': 0.7,
+          'max_tokens': 1024,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return data['choices'][0]['message']['content'] as String?;
+      } else {
+        AppLogger.e('Groq API Error: ${response.statusCode} - ${response.body}');
+        return null;
+      }
+    } catch (e, stackTrace) {
+      AppLogger.e('Error calling Groq API', error: e, stackTrace: stackTrace);
+      return null;
+    }
   }
 
   /// 메모 내용을 분석하여 적절한 폴더 ID를 추천
@@ -52,12 +78,11 @@ $folderList
 오직 폴더 ID만 응답하고, 다른 설명은 포함하지 마세요.
 ''';
 
-      final response = await _model.generateContent([Content.text(prompt)]);
-      final folderId = response.text?.trim();
+      final folderId = await _generateContent(prompt);
 
       // 응답이 유효한 폴더 ID인지 확인
-      if (folderId != null && availableFolders.containsKey(folderId)) {
-        return folderId;
+      if (folderId != null && availableFolders.containsKey(folderId.trim())) {
+        return folderId.trim();
       }
 
       return null;
@@ -96,10 +121,9 @@ $folderList
 태그:
 ''';
 
-      final response = await _model.generateContent([Content.text(prompt)]);
-      final tagsText = response.text?.trim();
+      final tagsText = await _generateContent(prompt);
 
-      if (tagsText == null || tagsText.isEmpty) {
+      if (tagsText == null || tagsText.trim().isEmpty) {
         return [];
       }
 
@@ -136,8 +160,8 @@ $folderList
 - 제목만 응답하고 다른 설명은 포함하지 마세요
 ''';
 
-      final response = await _model.generateContent([Content.text(prompt)]);
-      return response.text?.trim();
+      final title = await _generateContent(prompt);
+      return title?.trim();
     } catch (e, stackTrace) {
       AppLogger.e('Error generating title', error: e, stackTrace: stackTrace);
       return null;
@@ -218,8 +242,7 @@ $folderList
 - 위 형식 외 다른 설명은 포함하지 마세요
 ''';
 
-      final response = await _model.generateContent([Content.text(prompt)]);
-      final text = response.text?.trim();
+      final text = await _generateContent(prompt);
 
       if (text == null) {
         return {'folderId': null, 'tags': <String>[], 'newFolder': null};
@@ -257,6 +280,8 @@ $folderList
         }
       }
 
+      AppLogger.i('🎯 Groq 분류 결과 - folderId: $folderId, tags: $tags, newFolder: $newFolder');
+
       return {
         'folderId': folderId,
         'tags': tags,
@@ -265,11 +290,6 @@ $folderList
     } catch (e, stackTrace) {
       AppLogger.e('Error in classifyAndGenerateTags',
           error: e, stackTrace: stackTrace);
-      print('❌ DETAILED ERROR: ${e.toString()}');
-      print('❌ ERROR TYPE: ${e.runtimeType}');
-      if (e.toString().contains('models/')) {
-        print('❌ MODEL ERROR - Current model: gemini-1.5-flash');
-      }
       return {'folderId': null, 'tags': <String>[], 'newFolder': null};
     }
   }
