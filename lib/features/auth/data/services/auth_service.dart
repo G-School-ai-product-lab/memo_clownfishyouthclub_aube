@@ -1,15 +1,49 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import '../../../../core/utils/app_logger.dart';
+import '../../domain/entities/user_profile.dart';
+import '../../domain/repositories/user_repository.dart';
+import '../repositories/user_repository_impl.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn();
+  final UserRepository _userRepository = UserRepositoryImpl();
 
   // 현재 사용자 스트림
   Stream<User?> get authStateChanges => _auth.authStateChanges();
 
   // 현재 사용자
   User? get currentUser => _auth.currentUser;
+
+  // 사용자 프로필 생성 또는 업데이트
+  Future<void> _createOrUpdateUserProfile(User user) async {
+    try {
+      final userExists = await _userRepository.userExists(user.uid);
+
+      if (!userExists) {
+        // 신규 사용자 - 프로필 생성
+        final userProfile = UserProfile(
+          uid: user.uid,
+          email: user.email!,
+          displayName: user.displayName,
+          photoURL: user.photoURL,
+          createdAt: DateTime.now(),
+          lastLoginAt: DateTime.now(),
+        );
+        await _userRepository.createUserProfile(userProfile);
+        AppLogger.i('New user profile created: ${user.uid}');
+      } else {
+        // 기존 사용자 - 마지막 로그인 시간 업데이트
+        await _userRepository.updateLastLoginAt(user.uid);
+        AppLogger.i('User last login updated: ${user.uid}');
+      }
+    } catch (e, stackTrace) {
+      AppLogger.e('Error creating/updating user profile',
+          error: e, stackTrace: stackTrace);
+      // 프로필 생성 실패해도 로그인은 계속 진행
+    }
+  }
 
   // Google 로그인
   Future<UserCredential?> signInWithGoogle() async {
@@ -32,7 +66,14 @@ class AuthService {
       );
 
       // Firebase로 로그인
-      return await _auth.signInWithCredential(credential);
+      final userCredential = await _auth.signInWithCredential(credential);
+
+      // 사용자 프로필 생성 또는 업데이트
+      if (userCredential.user != null) {
+        await _createOrUpdateUserProfile(userCredential.user!);
+      }
+
+      return userCredential;
     } on FirebaseAuthException catch (e) {
       switch (e.code) {
         case 'account-exists-with-different-credential':
@@ -103,10 +144,17 @@ class AuthService {
     required String password,
   }) async {
     try {
-      return await _auth.createUserWithEmailAndPassword(
+      final userCredential = await _auth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
+
+      // 사용자 프로필 생성
+      if (userCredential.user != null) {
+        await _createOrUpdateUserProfile(userCredential.user!);
+      }
+
+      return userCredential;
     } on FirebaseAuthException catch (e) {
       switch (e.code) {
         case 'email-already-in-use':

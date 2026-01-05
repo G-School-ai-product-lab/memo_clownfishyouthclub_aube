@@ -3,22 +3,34 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // 사용자 프로필 컬렉션 규칙
+    match /users/{userId} {
+      // 누구나 읽을 수 있지만, 자신의 프로필만 수정 가능
+      allow read: if request.auth != null;
+      allow create, update: if request.auth != null && request.auth.uid == userId;
+      allow delete: if request.auth != null && request.auth.uid == userId;
+
+      // 사용자별 태그 서브컬렉션 규칙
+      match /tags/{tagId} {
+        // 로그인한 사용자가 자신의 태그만 접근 가능
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+
     // 메모 컬렉션 규칙
     match /memos/{memoId} {
-      // 임시: 로그인한 사용자는 모든 메모 접근 가능 (개발 중)
-      allow read, write: if request.auth != null;
+      // 로그인한 사용자가 자신의 메모만 접근 가능
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
     }
 
     // 폴더 컬렉션 규칙
     match /folders/{folderId} {
-      // 임시: 로그인한 사용자는 모든 폴더 접근 가능 (개발 중)
-      allow read, write: if request.auth != null;
-    }
-
-    // 사용자별 태그 서브컬렉션 규칙
-    match /users/{userId}/tags/{tagId} {
-      // 로그인한 사용자가 자신의 태그만 접근 가능
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      // 로그인한 사용자가 자신의 폴더만 접근 가능
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow create: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if request.auth != null && resource.data.userId == request.auth.uid;
     }
   }
 }

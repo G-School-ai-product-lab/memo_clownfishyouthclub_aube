@@ -53,6 +53,8 @@ dependencies:
   uuid: ^4.5.1
   shared_preferences: ^2.3.3
   logger: ^2.5.0
+  equatable: ^2.0.5
+  image_picker: ^1.1.2
 
   # AI
   google_generative_ai: ^0.4.7

@@ -1,26 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../drawer/presentation/widgets/main_drawer.dart';
 import '../../../auth/data/services/auth_service.dart';
+import '../../../auth/presentation/providers/user_providers.dart';
 import '../../../memo/presentation/screens/batch_reclassify_screen.dart';
+import 'profile_edit_screen.dart';
 
-class ProfileScreen extends StatefulWidget {
+class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
 
   @override
-  State<ProfileScreen> createState() => _ProfileScreenState();
+  ConsumerState<ProfileScreen> createState() => _ProfileScreenState();
 }
 
-class _ProfileScreenState extends State<ProfileScreen> {
+class _ProfileScreenState extends ConsumerState<ProfileScreen> {
   final _authService = AuthService();
-  User? _currentUser;
   bool _isLoading = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _currentUser = FirebaseAuth.instance.currentUser;
-  }
 
   // 로그아웃 다이얼로그
   Future<void> _showLogoutDialog() async {
@@ -166,31 +162,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  String _getUserDisplayName() {
-    if (_currentUser == null) return '사용자';
-
-    // Google 로그인인 경우 displayName 사용
-    if (_currentUser!.displayName != null && _currentUser!.displayName!.isNotEmpty) {
-      return _currentUser!.displayName!;
-    }
-
-    // 이메일에서 사용자명 추출
-    if (_currentUser!.email != null) {
-      return _currentUser!.email!.split('@')[0];
-    }
-
-    return '사용자';
-  }
-
-  String _getUserId() {
-    if (_currentUser == null) return 'unknown';
-
-    // UID의 앞 8자리만 표시
-    return _currentUser!.uid.substring(0, 8);
-  }
-
   @override
   Widget build(BuildContext context) {
+    final userProfileAsync = ref.watch(currentUserProfileProvider);
+    final currentUser = ref.watch(authStateProvider).value;
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -205,6 +181,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.edit, color: Colors.black87),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const ProfileEditScreen(),
+                ),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.home, color: Colors.black87),
             onPressed: () {
@@ -224,121 +210,219 @@ class _ProfileScreenState extends State<ProfileScreen> {
               child: Center(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      // 프로필 이미지
-                      Container(
-                        width: 120,
-                        height: 120,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[300],
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          Icons.person,
-                          size: 60,
-                          color: Colors.grey[600],
-                        ),
-                      ),
+                  child: userProfileAsync.when(
+                    data: (userProfile) {
+                      final displayName = userProfile?.getDisplayName() ??
+                          currentUser?.displayName ??
+                          currentUser?.email?.split('@')[0] ??
+                          '사용자';
+                      final userId =
+                          currentUser?.uid.substring(0, 8) ?? 'unknown';
 
-                      const SizedBox(height: 32),
-
-                      // 사용자 이름
-                      Text(
-                        _getUserDisplayName(),
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black,
-                        ),
-                      ),
-
-                      const SizedBox(height: 8),
-
-                      // 사용자 ID
-                      Text(
-                        'ID: ${_getUserId()}',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          color: Colors.black,
-                        ),
-                      ),
-
-                      const SizedBox(height: 48),
-
-                      // AI 일괄 재분류 버튼
-                      Container(
-                        width: double.infinity,
-                        margin: const EdgeInsets.symmetric(horizontal: 24),
-                        child: ElevatedButton.icon(
-                          onPressed: () {
-                            Navigator.of(context).push(
-                              MaterialPageRoute(
-                                builder: (context) => const BatchReclassifyScreen(),
-                              ),
-                            );
-                          },
-                          icon: const Icon(Icons.auto_awesome, color: Colors.white),
-                          label: const Text(
-                            'AI 메모 일괄 재분류',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF8B4444),
-                            padding: const EdgeInsets.symmetric(vertical: 14),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                        ),
-                      ),
-
-                      const SizedBox(height: 32),
-
-                      // 로그아웃 / 탈퇴하기
-                      Row(
+                      return Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          TextButton(
-                            onPressed: _showLogoutDialog,
-                            child: const Text(
-                              '로그아웃',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Color(0xFF666666),
-                              ),
+                          // 프로필 이미지
+                          GestureDetector(
+                            onTap: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      const ProfileEditScreen(),
+                                ),
+                              );
+                            },
+                            child: Stack(
+                              children: [
+                                CircleAvatar(
+                                  radius: 60,
+                                  backgroundColor: Colors.grey[300],
+                                  backgroundImage: userProfile?.photoURL != null
+                                      ? NetworkImage(userProfile!.photoURL!)
+                                      : (currentUser?.photoURL != null
+                                          ? NetworkImage(currentUser!.photoURL!)
+                                          : null),
+                                  child: (userProfile?.photoURL == null &&
+                                          currentUser?.photoURL == null)
+                                      ? Icon(Icons.person,
+                                          size: 60, color: Colors.grey[600])
+                                      : null,
+                                ),
+                                Positioned(
+                                  bottom: 0,
+                                  right: 0,
+                                  child: Container(
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF8B3A3A),
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                          color: Colors.white, width: 2),
+                                    ),
+                                    padding: const EdgeInsets.all(6),
+                                    child: const Icon(
+                                      Icons.camera_alt,
+                                      color: Colors.white,
+                                      size: 16,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                          Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 8),
-                            child: Text(
-                              '|',
-                              style: TextStyle(
-                                color: Colors.grey[400],
-                                fontSize: 14,
-                              ),
-                            ),
-                          ),
-                          TextButton(
-                            onPressed: _showDeleteAccountDialog,
-                            child: const Text(
-                              '탈퇴하기',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Color(0xFF666666),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
 
-                      const SizedBox(height: 24),
-                    ],
+                          const SizedBox(height: 24),
+
+                          // 사용자 이름
+                          Text(
+                            displayName,
+                            style: const TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black,
+                            ),
+                          ),
+
+                          const SizedBox(height: 8),
+
+                          // 이메일
+                          if (currentUser?.email != null)
+                            Text(
+                              currentUser!.email!,
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+
+                          const SizedBox(height: 4),
+
+                          // 사용자 ID
+                          Text(
+                            'ID: $userId',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[500],
+                            ),
+                          ),
+
+                          const SizedBox(height: 16),
+
+                          // 자기소개
+                          if (userProfile?.bio != null &&
+                              userProfile!.bio!.isNotEmpty)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 24,
+                                vertical: 12,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.grey[100],
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Text(
+                                userProfile.bio!,
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey[700],
+                                  height: 1.5,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+
+                          const SizedBox(height: 32),
+
+                          // AI 일괄 재분류 버튼
+                          Container(
+                            width: double.infinity,
+                            margin: const EdgeInsets.symmetric(horizontal: 24),
+                            child: ElevatedButton.icon(
+                              onPressed: () {
+                                Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        const BatchReclassifyScreen(),
+                                  ),
+                                );
+                              },
+                              icon: const Icon(Icons.auto_awesome,
+                                  color: Colors.white),
+                              label: const Text(
+                                'AI 메모 일괄 재분류',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF8B4444),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 14),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                            ),
+                          ),
+
+                          const SizedBox(height: 32),
+
+                          // 로그아웃 / 탈퇴하기
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              TextButton(
+                                onPressed: _showLogoutDialog,
+                                child: const Text(
+                                  '로그아웃',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Color(0xFF666666),
+                                  ),
+                                ),
+                              ),
+                              Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 8),
+                                child: Text(
+                                  '|',
+                                  style: TextStyle(
+                                    color: Colors.grey[400],
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ),
+                              TextButton(
+                                onPressed: _showDeleteAccountDialog,
+                                child: const Text(
+                                  '탈퇴하기',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    color: Color(0xFF666666),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+
+                          const SizedBox(height: 24),
+                        ],
+                      );
+                    },
+                    loading: () => const CircularProgressIndicator(
+                      color: Color(0xFF8B3A3A),
+                    ),
+                    error: (error, stack) => Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(Icons.error_outline,
+                            size: 48, color: Colors.red),
+                        const SizedBox(height: 16),
+                        Text(
+                            '프로필을 불러오는 중 오류가 발생했습니다.\n${error.toString()}'),
+                      ],
+                    ),
                   ),
                 ),
               ),
