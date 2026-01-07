@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../../../../core/utils/app_logger.dart';
 import '../../domain/entities/user_profile.dart';
@@ -7,8 +8,25 @@ import '../repositories/user_repository_impl.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
+  late final GoogleSignIn _googleSignIn;
   final UserRepository _userRepository = UserRepositoryImpl();
+
+  AuthService() {
+    // iOS/ macOS에서는 GoogleService-Info.plist의 CLIENT_ID를 clientId로 지정하지 않으면
+    // "네트워크가 유실되었습니다" 오류가 발생할 수 있음.
+    final isApplePlatform = defaultTargetPlatform == TargetPlatform.iOS ||
+        defaultTargetPlatform == TargetPlatform.macOS;
+
+    _googleSignIn = GoogleSignIn(
+      clientId: isApplePlatform
+          ? '395596167392-e65ark5ckov19a1ohevkmqq2rqb8abd5.apps.googleusercontent.com'
+          : null,
+      scopes: const [
+        'email',
+        'profile',
+      ],
+    );
+  }
 
   // 현재 사용자 스트림
   Stream<User?> get authStateChanges => _auth.authStateChanges();
@@ -48,25 +66,37 @@ class AuthService {
   // Google 로그인
   Future<UserCredential?> signInWithGoogle() async {
     try {
+      AppLogger.i('🔐 Starting Google Sign-In...');
+
       // Google Sign-In 프로세스 시작
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+      AppLogger.i('📱 Google Sign-In dialog completed');
 
       // 사용자가 로그인을 취소한 경우
       if (googleUser == null) {
+        AppLogger.i('❌ User cancelled Google Sign-In');
         return null;
       }
 
+      AppLogger.i('✅ Google user obtained: ${googleUser.email}');
+
       // Google 인증 정보 가져오기
+      AppLogger.i('🔑 Getting authentication tokens...');
       final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      AppLogger.i('🔑 Access token: ${googleAuth.accessToken?.substring(0, 20)}...');
+      AppLogger.i('🔑 ID token: ${googleAuth.idToken?.substring(0, 20)}...');
 
       // Firebase 인증 자격증명 생성
       final credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
+      AppLogger.i('🎫 Firebase credential created');
 
       // Firebase로 로그인
+      AppLogger.i('🔥 Signing in to Firebase...');
       final userCredential = await _auth.signInWithCredential(credential);
+      AppLogger.i('✅ Firebase sign-in successful: ${userCredential.user?.uid}');
 
       // 사용자 프로필 생성 또는 업데이트
       if (userCredential.user != null) {
@@ -74,7 +104,10 @@ class AuthService {
       }
 
       return userCredential;
-    } on FirebaseAuthException catch (e) {
+    } on FirebaseAuthException catch (e, stackTrace) {
+      AppLogger.e('❌ FirebaseAuthException', error: e, stackTrace: stackTrace);
+      AppLogger.e('Error code: ${e.code}');
+      AppLogger.e('Error message: ${e.message}');
       switch (e.code) {
         case 'account-exists-with-different-credential':
           throw '이미 다른 로그인 방법으로 가입된 계정입니다.';
@@ -95,8 +128,9 @@ class AuthService {
         default:
           throw '로그인 중 오류가 발생했습니다: ${e.message}';
       }
-    } catch (e) {
-      throw '로그인 중 오류가 발생했습니다. 다시 시도해주세요.';
+    } catch (e, stackTrace) {
+      AppLogger.e('❌ General Exception during Google Sign-In', error: e, stackTrace: stackTrace);
+      throw '로그인 중 오류가 발생했습니다: $e';
     }
   }
 

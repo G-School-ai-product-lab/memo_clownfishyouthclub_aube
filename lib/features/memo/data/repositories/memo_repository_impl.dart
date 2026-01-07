@@ -115,10 +115,15 @@ class MemoRepositoryImpl implements MemoRepository {
         if (oldMemo.folderId != null) {
           final oldFolder = await _folderRepository.getFolderById(oldMemo.folderId!);
           if (oldFolder != null) {
-            final updatedFolder = oldFolder.copyWith(
-              memoCount: oldFolder.memoCount > 0 ? oldFolder.memoCount - 1 : 0,
-            );
-            await _folderRepository.updateFolder(updatedFolder);
+            final newMemoCount = oldFolder.memoCount > 0 ? oldFolder.memoCount - 1 : 0;
+
+            // 메모 수가 0이 되면 폴더 삭제
+            if (newMemoCount == 0) {
+              await _folderRepository.deleteFolder(oldMemo.folderId!);
+            } else {
+              final updatedFolder = oldFolder.copyWith(memoCount: newMemoCount);
+              await _folderRepository.updateFolder(updatedFolder);
+            }
           }
         }
 
@@ -161,10 +166,15 @@ class MemoRepositoryImpl implements MemoRepository {
       if (memo.folderId != null) {
         final folder = await _folderRepository.getFolderById(memo.folderId!);
         if (folder != null) {
-          final updatedFolder = folder.copyWith(
-            memoCount: folder.memoCount > 0 ? folder.memoCount - 1 : 0,
-          );
-          await _folderRepository.updateFolder(updatedFolder);
+          final newMemoCount = folder.memoCount > 0 ? folder.memoCount - 1 : 0;
+
+          // 메모 수가 0이 되면 폴더 삭제
+          if (newMemoCount == 0) {
+            await _folderRepository.deleteFolder(memo.folderId!);
+          } else {
+            final updatedFolder = folder.copyWith(memoCount: newMemoCount);
+            await _folderRepository.updateFolder(updatedFolder);
+          }
         }
       }
     }

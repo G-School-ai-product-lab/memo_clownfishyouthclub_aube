@@ -22,6 +22,12 @@ class FolderRepositoryImpl implements FolderRepository {
   }
 
   @override
+  Future<Folder?> getFolderByName(String userId, String name) async {
+    final model = await _datasource.getFolderByName(userId, name);
+    return model?.toEntity();
+  }
+
+  @override
   Future<Folder> createFolder(Folder folder) async {
     final model = FolderModel.fromEntity(folder);
     final createdModel = await _datasource.createFolder(model);

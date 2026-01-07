@@ -246,56 +246,29 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
             ),
           ),
 
-          // 플로팅 액션 버튼들
+          // 플로팅 액션 버튼
           Positioned(
             bottom: 24,
             right: 24,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // AI 검색 버튼
-                FloatingActionButton(
-                  heroTag: 'ai_search',
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const AiSearchScreen(),
-                      ),
-                    );
-                    ref.read(guideNotifierProvider.notifier).markNaturalSearchUsed();
-                  },
-                  backgroundColor: Colors.white,
-                  elevation: 4,
-                  child: const Icon(
-                    Icons.send,
-                    color: Color(0xFF8B4444),
+            child: FloatingActionButton(
+              heroTag: 'create_memo',
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const MemoCreateScreen(),
                   ),
-                ),
-                const SizedBox(height: 16),
-                // 메모 작성 버튼
-                FloatingActionButton.large(
-                  heroTag: 'create_memo',
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const MemoCreateScreen(),
-                      ),
-                    ).then((created) {
-                      if (created == true) {
-                        ref.read(guideNotifierProvider.notifier).markFirstMemoCreated();
-                      }
-                    });
-                  },
-                  backgroundColor: const Color(0xFF8B4444),
-                  child: const Icon(
-                    Icons.add,
-                    color: Colors.white,
-                    size: 32,
-                  ),
-                ),
-              ],
+                ).then((created) {
+                  if (created == true) {
+                    ref.read(guideNotifierProvider.notifier).markFirstMemoCreated();
+                  }
+                });
+              },
+              backgroundColor: const Color(0xFF8B4444),
+              child: const Icon(
+                Icons.add,
+                color: Colors.white,
+              ),
             ),
           ),
 

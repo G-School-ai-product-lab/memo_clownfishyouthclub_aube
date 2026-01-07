@@ -12,4 +12,13 @@ import FirebaseCore
     GeneratedPluginRegistrant.register(with: self)
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
+
+  // Google Sign-In을 위한 URL 핸들링
+  override func application(
+    _ app: UIApplication,
+    open url: URL,
+    options: [UIApplication.OpenURLOptionsKey : Any] = [:]
+  ) -> Bool {
+    return super.application(app, open: url, options: options)
+  }
 }

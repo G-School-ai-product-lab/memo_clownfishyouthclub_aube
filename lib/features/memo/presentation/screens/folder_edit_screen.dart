@@ -2,22 +2,26 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/entities/folder.dart';
 import '../providers/folder_providers.dart';
-import '../providers/memo_providers.dart';
-import '../providers/tag_providers.dart';
 import '../../../../core/utils/app_logger.dart';
 
-class FolderCreateScreen extends ConsumerStatefulWidget {
-  const FolderCreateScreen({super.key});
+class FolderEditScreen extends ConsumerStatefulWidget {
+  final Folder folder;
+
+  const FolderEditScreen({
+    super.key,
+    required this.folder,
+  });
 
   @override
-  ConsumerState<FolderCreateScreen> createState() => _FolderCreateScreenState();
+  ConsumerState<FolderEditScreen> createState() => _FolderEditScreenState();
 }
 
-class _FolderCreateScreenState extends ConsumerState<FolderCreateScreen> {
-  final _nameController = TextEditingController();
-  String _selectedIcon = '📁';
-  String _selectedColor = 'blue';
+class _FolderEditScreenState extends ConsumerState<FolderEditScreen> {
+  late final TextEditingController _nameController;
+  late String _selectedIcon;
+  late String _selectedColor;
   bool _isSaving = false;
+  bool _isDeleting = false;
 
   final List<String> _icons = [
     '📁', '📂', '📋', '📌', '📝', '📖',
@@ -35,6 +39,14 @@ class _FolderCreateScreenState extends ConsumerState<FolderCreateScreen> {
     'teal': Colors.teal,
     'amber': Colors.amber,
   };
+
+  @override
+  void initState() {
+    super.initState();
+    _nameController = TextEditingController(text: widget.folder.name);
+    _selectedIcon = widget.folder.icon;
+    _selectedColor = widget.folder.color;
+  }
 
   @override
   void dispose() {
@@ -58,127 +70,53 @@ class _FolderCreateScreenState extends ConsumerState<FolderCreateScreen> {
     });
 
     try {
-      final userId = ref.read(currentUserIdProvider);
-      if (userId == null) {
-        throw Exception('로그인이 필요합니다');
-      }
-
       final folderName = _nameController.text.trim();
       final folderRepository = ref.read(folderRepositoryProvider);
-      final tagRepository = ref.read(tagRepositoryProvider);
 
-      // 1. 같은 이름의 폴더가 이미 있는지 확인
-      final existingFolder = await folderRepository.getFolderByName(userId, folderName);
-      if (existingFolder != null) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('이미 "$folderName" 폴더가 존재합니다'),
-              backgroundColor: Colors.orange,
-            ),
-          );
-        }
-        return;
-      }
-
-      // 2. 같은 이름의 태그가 있는지 확인
-      final existingTag = await tagRepository.getTagByName(userId, folderName);
-
-      if (existingTag != null) {
-        // 태그가 있으면 병합 확인 대화상자 표시
-        if (!mounted) return;
-        final shouldMerge = await showDialog<bool>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('태그를 폴더로 변환'),
-            content: Text(
-              '"$folderName" 태그가 이미 존재합니다.\n'
-              '이 태그를 폴더로 변환하시겠습니까?\n\n'
-              '변환 시 ${existingTag.memoCount}개의 메모가 이 폴더에 포함됩니다.',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('취소'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: const Text(
-                  '변환',
-                  style: TextStyle(color: Color(0xFF8B4444)),
-                ),
-              ),
-            ],
-          ),
+      // 이름이 변경된 경우 중복 체크
+      if (folderName != widget.folder.name) {
+        final existingFolder = await folderRepository.getFolderByName(
+          widget.folder.userId,
+          folderName,
         );
-
-        if (shouldMerge != true) {
-          setState(() => _isSaving = false);
+        if (existingFolder != null) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('이미 "$folderName" 폴더가 존재합니다'),
+                backgroundColor: Colors.orange,
+              ),
+            );
+          }
           return;
         }
+      }
 
-        // 태그를 폴더로 변환
-        final folder = Folder(
-          id: '', // datasource에서 자동 생성
-          userId: userId,
-          name: folderName,
-          icon: _selectedIcon,
-          color: _selectedColor,
-          memoCount: existingTag.memoCount, // 태그의 메모 카운트를 가져옴
-          createdAt: DateTime.now(),
+      final updatedFolder = widget.folder.copyWith(
+        name: folderName,
+        icon: _selectedIcon,
+        color: _selectedColor,
+      );
+
+      await folderRepository.updateFolder(updatedFolder);
+
+      AppLogger.i('폴더 수정 완료: ${updatedFolder.name}');
+
+      if (mounted) {
+        Navigator.pop(context, true);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${updatedFolder.name} 폴더가 수정되었습니다'),
+            backgroundColor: const Color(0xFF8B4444),
+          ),
         );
-
-        final createdFolder = await folderRepository.createFolder(folder);
-
-        // 해당 태그를 가진 모든 메모를 폴더로 이동
-        await _migrateTagToFolder(userId, folderName, createdFolder.id);
-
-        // 태그 삭제
-        await tagRepository.deleteTag(userId, existingTag.id);
-
-        AppLogger.i('태그를 폴더로 변환 완료: $folderName');
-
-        if (mounted) {
-          Navigator.pop(context, true);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('"$folderName" 태그가 폴더로 변환되었습니다'),
-              backgroundColor: const Color(0xFF8B4444),
-            ),
-          );
-        }
-      } else {
-        // 일반 폴더 생성
-        final folder = Folder(
-          id: '', // datasource에서 자동 생성
-          userId: userId,
-          name: folderName,
-          icon: _selectedIcon,
-          color: _selectedColor,
-          memoCount: 0,
-          createdAt: DateTime.now(),
-        );
-
-        await folderRepository.createFolder(folder);
-
-        AppLogger.i('폴더 생성 완료: ${folder.name}');
-
-        if (mounted) {
-          Navigator.pop(context, true);
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('${folder.name} 폴더가 생성되었습니다'),
-              backgroundColor: const Color(0xFF8B4444),
-            ),
-          );
-        }
       }
     } catch (e) {
-      AppLogger.e('폴더 생성 실패', error: e);
+      AppLogger.e('폴더 수정 실패', error: e);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('폴더 생성 실패: $e'),
+            content: Text('폴더 수정 실패: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -192,27 +130,69 @@ class _FolderCreateScreenState extends ConsumerState<FolderCreateScreen> {
     }
   }
 
-  Future<void> _migrateTagToFolder(String userId, String tagName, String folderId) async {
+  Future<void> _deleteFolder() async {
+    final shouldDelete = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('폴더 삭제'),
+        content: Text(
+          '${widget.folder.name} 폴더를 삭제하시겠습니까?\n\n'
+          '폴더를 삭제해도 메모는 삭제되지 않으며,\n'
+          '분류되지 않은 메모로 남게 됩니다.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('취소'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text(
+              '삭제',
+              style: TextStyle(color: Colors.red),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldDelete != true) return;
+
+    setState(() {
+      _isDeleting = true;
+    });
+
     try {
-      final memoRepository = ref.read(memoRepositoryProvider);
-      final memos = await memoRepository.getMemos(userId);
+      final folderRepository = ref.read(folderRepositoryProvider);
+      await folderRepository.deleteFolder(widget.folder.id);
 
-      // 해당 태그를 가진 모든 메모를 찾아서 폴더로 이동하고 태그 제거
-      for (final memo in memos) {
-        if (memo.tags.contains(tagName)) {
-          final updatedTags = memo.tags.where((tag) => tag != tagName).toList();
-          final updatedMemo = memo.copyWith(
-            folderId: folderId,
-            tags: updatedTags,
-          );
-          await memoRepository.updateMemo(updatedMemo);
-        }
+      AppLogger.i('폴더 삭제 완료: ${widget.folder.name}');
+
+      if (mounted) {
+        Navigator.pop(context, true);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${widget.folder.name} 폴더가 삭제되었습니다'),
+            backgroundColor: const Color(0xFF8B4444),
+          ),
+        );
       }
-
-      AppLogger.i('태그 마이그레이션 완료: $tagName -> 폴더 $folderId');
     } catch (e) {
-      AppLogger.e('태그 마이그레이션 실패', error: e);
-      rethrow;
+      AppLogger.e('폴더 삭제 실패', error: e);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('폴더 삭제 실패: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isDeleting = false;
+        });
+      }
     }
   }
 
@@ -228,7 +208,7 @@ class _FolderCreateScreenState extends ConsumerState<FolderCreateScreen> {
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
-          '새 폴더',
+          '폴더 수정',
           style: TextStyle(
             color: Colors.black87,
             fontSize: 18,
@@ -325,7 +305,7 @@ class _FolderCreateScreenState extends ConsumerState<FolderCreateScreen> {
                     height: 56,
                     decoration: BoxDecoration(
                       color: isSelected
-                          ? const Color(0xFF8B4444).withOpacity(0.1)
+                          ? const Color(0xFF8B4444).withValues(alpha: 0.1)
                           : Colors.grey[100],
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
@@ -381,7 +361,7 @@ class _FolderCreateScreenState extends ConsumerState<FolderCreateScreen> {
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.1),
+                          color: Colors.black.withValues(alpha: 0.1),
                           blurRadius: 4,
                           offset: const Offset(0, 2),
                         ),
@@ -397,6 +377,41 @@ class _FolderCreateScreenState extends ConsumerState<FolderCreateScreen> {
                   ),
                 );
               }).toList(),
+            ),
+
+            const SizedBox(height: 48),
+
+            // 삭제 버튼
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _isDeleting ? null : _deleteFolder,
+                icon: _isDeleting
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.red,
+                        ),
+                      )
+                    : const Icon(Icons.delete_outline, color: Colors.red),
+                label: Text(
+                  _isDeleting ? '삭제 중...' : '폴더 삭제',
+                  style: const TextStyle(
+                    color: Colors.red,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  side: const BorderSide(color: Colors.red),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
             ),
           ],
         ),

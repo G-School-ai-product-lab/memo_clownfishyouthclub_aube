@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../domain/entities/tag.dart';
 import '../providers/tag_providers.dart';
 import '../providers/memo_providers.dart';
+import '../providers/folder_providers.dart';
 import '../../../../core/utils/app_logger.dart';
 
 class TagCreateScreen extends ConsumerStatefulWidget {
@@ -64,17 +65,65 @@ class _TagCreateScreenState extends ConsumerState<TagCreateScreen> {
         throw Exception('로그인이 필요합니다');
       }
 
+      final tagName = _nameController.text.trim();
+      final tagRepository = ref.read(tagRepositoryProvider);
+      final folderRepository = ref.read(folderRepositoryProvider);
+
+      // 1. 같은 이름의 태그가 이미 있는지 확인
+      final existingTag = await tagRepository.getTagByName(userId, tagName);
+      if (existingTag != null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('이미 "#$tagName" 태그가 존재합니다'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+        return;
+      }
+
+      // 2. 같은 이름의 폴더가 있는지 확인
+      final existingFolder = await folderRepository.getFolderByName(userId, tagName);
+
+      if (existingFolder != null) {
+        // 폴더가 있으면 안내 메시지만 표시
+        if (!mounted) return;
+        await showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('폴더가 이미 존재합니다'),
+            content: Text(
+              '"$tagName" 이름의 폴더가 이미 존재합니다.\n'
+              '폴더를 사용하시거나 다른 이름의 태그를 만들어주세요.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text(
+                  '확인',
+                  style: TextStyle(color: Color(0xFF8B4444)),
+                ),
+              ),
+            ],
+          ),
+        );
+
+        setState(() => _isSaving = false);
+        return;
+      }
+
+      // 일반 태그 생성
       final tag = Tag(
         id: '', // datasource에서 자동 생성
         userId: userId,
-        name: _nameController.text.trim(),
+        name: tagName,
         color: _selectedColor,
         memoCount: 0,
         createdAt: DateTime.now(),
       );
 
-      final repository = ref.read(tagRepositoryProvider);
-      await repository.createTag(tag);
+      await tagRepository.createTag(tag);
 
       AppLogger.i('태그 생성 완료: ${tag.name}');
 

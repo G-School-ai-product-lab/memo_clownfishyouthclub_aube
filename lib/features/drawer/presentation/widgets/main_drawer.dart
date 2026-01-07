@@ -6,6 +6,7 @@ import '../../../memo/presentation/providers/folder_providers.dart';
 import '../../../memo/presentation/providers/tag_providers.dart';
 import '../../../memo/presentation/providers/filter_providers.dart';
 import '../../../memo/presentation/screens/folder_create_screen.dart';
+import '../../../memo/presentation/screens/folder_edit_screen.dart';
 import '../../../memo/presentation/screens/tag_create_screen.dart';
 import '../../../profile/presentation/screens/profile_screen.dart';
 import 'drawer_profile_header.dart';
@@ -101,6 +102,15 @@ class MainDrawer extends ConsumerWidget {
                                   ref.read(memoFilterProvider.notifier).setFolderFilter(folder);
                                 }
                                 Navigator.pop(context);
+                              },
+                              onLongPress: () {
+                                Navigator.pop(context);
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => FolderEditScreen(folder: folder),
+                                  ),
+                                );
                               },
                             );
                           }).toList(),

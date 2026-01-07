@@ -16,6 +16,88 @@ class MemoViewScreen extends ConsumerWidget {
     required this.memo,
   });
 
+  /// 폴더 선택 다이얼로그 표시
+  void _showFolderSelector(BuildContext context, WidgetRef ref, Memo memo, List<Folder> folders) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('폴더 선택'),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView(
+            shrinkWrap: true,
+            children: [
+              // 폴더 없음 옵션
+              ListTile(
+                leading: const Icon(Icons.folder_off_outlined, color: Colors.grey),
+                title: const Text('폴더 없음'),
+                selected: memo.folderId == null,
+                onTap: () async {
+                  Navigator.pop(context);
+                  if (memo.folderId != null) {
+                    await _updateMemoFolder(context, ref, memo, null);
+                  }
+                },
+              ),
+              const Divider(),
+              // 기존 폴더 목록
+              ...folders.map((folder) => ListTile(
+                leading: Text(folder.icon, style: const TextStyle(fontSize: 20)),
+                title: Text(folder.name),
+                selected: memo.folderId == folder.id,
+                onTap: () async {
+                  Navigator.pop(context);
+                  if (memo.folderId != folder.id) {
+                    await _updateMemoFolder(context, ref, memo, folder.id);
+                  }
+                },
+              )),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('취소'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// 메모의 폴더 업데이트
+  Future<void> _updateMemoFolder(BuildContext context, WidgetRef ref, Memo memo, String? newFolderId) async {
+    try {
+      final repository = ref.read(memoRepositoryProvider);
+      final updatedMemo = newFolderId == null
+          ? memo.copyWith(clearFolderId: true)
+          : memo.copyWith(folderId: newFolderId);
+
+      await repository.updateMemo(updatedMemo);
+      ref.invalidate(memosStreamProvider);
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('폴더가 변경되었습니다'),
+            backgroundColor: Color(0xFF8B4444),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      AppLogger.e('폴더 업데이트 실패', error: e);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('폴더 변경 실패: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     AppLogger.i('메모 보기 화면 - memo.folderId: ${memo.folderId}, memo.tags: ${memo.tags}');
@@ -130,8 +212,7 @@ class MemoViewScreen extends ConsumerWidget {
       body: Column(
         children: [
           // 폴더 및 태그 정보 표시
-          if (currentFolder != null || memo.tags.isNotEmpty)
-            Container(
+          Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
                 color: const Color(0xFFFFF9F0),
@@ -142,24 +223,65 @@ class MemoViewScreen extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // 폴더 정보
+                  // 폴더 정보 (클릭 가능)
                   if (currentFolder != null)
-                    Row(
-                      children: [
-                        Text(
-                          currentFolder.icon,
-                          style: const TextStyle(fontSize: 16),
+                    InkWell(
+                      onTap: () => _showFolderSelector(context, ref, memo, folders),
+                      borderRadius: BorderRadius.circular(8),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              currentFolder.icon,
+                              style: const TextStyle(fontSize: 16),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              currentFolder.name,
+                              style: const TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF8B4444),
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            const Icon(
+                              Icons.edit,
+                              size: 14,
+                              color: Color(0xFF8B4444),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 8),
-                        Text(
-                          currentFolder.name,
-                          style: const TextStyle(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF8B4444),
-                          ),
+                      ),
+                    )
+                  else
+                    InkWell(
+                      onTap: () => _showFolderSelector(context, ref, memo, folders),
+                      borderRadius: BorderRadius.circular(8),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: const [
+                            Icon(
+                              Icons.folder_outlined,
+                              size: 16,
+                              color: Color(0xFF8B4444),
+                            ),
+                            SizedBox(width: 8),
+                            Text(
+                              '폴더 추가',
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w500,
+                                color: Color(0xFF8B4444),
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
+                      ),
                     ),
                   // 태그 정보
                   if (memo.tags.isNotEmpty) ...[

@@ -31,6 +31,18 @@ class FirebaseFolderDatasource {
     return FolderModel.fromFirestore(doc);
   }
 
+  Future<FolderModel?> getFolderByName(String userId, String name) async {
+    final querySnapshot = await _firestore
+        .collection('folders')
+        .where('userId', isEqualTo: userId)
+        .where('name', isEqualTo: name)
+        .limit(1)
+        .get();
+
+    if (querySnapshot.docs.isEmpty) return null;
+    return FolderModel.fromFirestore(querySnapshot.docs.first);
+  }
+
   Future<FolderModel> createFolder(FolderModel folder) async {
     // ID가 비어있으면 자동 생성
     final docRef = folder.id.isEmpty

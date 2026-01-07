@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/utils/app_logger.dart';
+import '../../../memo/domain/entities/folder.dart';
 import '../../../memo/presentation/providers/filter_providers.dart';
 import '../../../memo/presentation/providers/folder_providers.dart';
 import '../../../memo/presentation/providers/memo_providers.dart';
 import '../../../memo/presentation/screens/all_memos_screen.dart';
+import '../../../memo/presentation/screens/folder_edit_screen.dart';
 
 class FolderShortcutsSection extends ConsumerWidget {
   const FolderShortcutsSection({super.key});
@@ -58,6 +60,8 @@ class FolderShortcutsSection extends ConsumerWidget {
                 itemBuilder: (context, index) {
                   if (index == 0) {
                     return _buildFolderCard(
+                      context: context,
+                      ref: ref,
                       icon: '📁',
                       name: '전체',
                       count: folders.fold<int>(
@@ -79,9 +83,12 @@ class FolderShortcutsSection extends ConsumerWidget {
 
                   final folder = folders[index - 1];
                   return _buildFolderCard(
+                    context: context,
+                    ref: ref,
                     icon: folder.icon,
                     name: folder.name,
                     count: folder.memoCount,
+                    folder: folder,
                     onTap: () {
                       // 폴더 필터 적용
                       ref
@@ -114,13 +121,27 @@ class FolderShortcutsSection extends ConsumerWidget {
   }
 
   Widget _buildFolderCard({
+    required BuildContext context,
+    required WidgetRef ref,
     required String icon,
     required String name,
     required int count,
     required VoidCallback onTap,
+    Folder? folder,
   }) {
     return GestureDetector(
       onTap: onTap,
+      onLongPress: folder != null
+          ? () {
+              // 폴더 수정 화면으로 이동
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => FolderEditScreen(folder: folder),
+                ),
+              );
+            }
+          : null,
       child: Container(
         width: 120,
         margin: const EdgeInsets.symmetric(horizontal: 4),
@@ -132,7 +153,7 @@ class FolderShortcutsSection extends ConsumerWidget {
           border: Border.all(color: Colors.grey.shade200),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.05),
+              color: Colors.black.withValues(alpha: 0.05),
               blurRadius: 4,
               offset: const Offset(0, 2),
             ),

@@ -5,12 +5,14 @@ class FolderListItem extends StatelessWidget {
   final Folder folder;
   final bool isSelected;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
 
   const FolderListItem({
     super.key,
     required this.folder,
     required this.isSelected,
     required this.onTap,
+    this.onLongPress,
   });
 
   @override
@@ -19,6 +21,7 @@ class FolderListItem extends StatelessWidget {
       color: isSelected ? const Color(0xFFFFF5F5) : Colors.transparent,
       child: InkWell(
         onTap: onTap,
+        onLongPress: onLongPress,
         child: Container(
           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
           decoration: BoxDecoration(
