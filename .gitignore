@@ -48,3 +48,6 @@ app.*.map.json
 .env
 .env.local
 ios/build/
+
+# API Keys (개발용 - GitHub에 푸시하지 않음)
+lib/core/config/env_config.dart
